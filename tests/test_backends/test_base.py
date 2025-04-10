@@ -1,6 +1,6 @@
 import pytest
 from backends.base import BaseBackend
-from utils.validation import ValidationError, validate_voltage
+from utils.validation import ValidationError
 
 def test_base_backend_initialization():
     """Test that the base backend can be initialized."""

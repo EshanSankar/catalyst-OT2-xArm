@@ -51,3 +51,17 @@ htmlcov/
 
 # Hugging Face
 .huggingface/
+
+# History files
+.history/
+.history/**/*
+
+# Environment
+.env
+.venv
+env/
+venv/
+ENV/
+
+# Local development
+.DS_Store
