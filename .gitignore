@@ -48,3 +48,6 @@ config/*
 # Test coverage
 .coverage
 htmlcov/
+
+# Hugging Face
+.huggingface/
