@@ -155,7 +155,7 @@ class Arduino:
 
 
     def setUltrasonic(self, baseNumber:int, turnOn:bool, retries:int=3) -> None:
-        LOGGER.info(f'{"Enabling" if turnOn else "Disabling"} base {baseNumber}\'s sonicator')
+        LOGGER.info(f"{"Enabling" if turnOn else "Disabling"} base {baseNumber}'s sonicator")
         if turnOn:
             self.connection.write(f"set_ultrasonic_on {baseNumber}\n".encode())
         else:
