@@ -109,14 +109,14 @@ class Arduino:
 
 
     def setPump(self, pumpNumber:int, turnOn:bool, retries:int=3) -> None:
-        LOGGER.info(f'{"Enabling" if turnOn else "Disabling"} pump {pumpNumber}')
+        LOGGER.info(f"{"Enabling" if turnOn else "Disabling"} pump {pumpNumber}")
         if turnOn:
             self.connection.write(f"set_pump_on {pumpNumber}\n".encode())
         else:
             self.connection.write(f"set_pump_off {pumpNumber}\n".encode())
             
         self.__getSafeResponse(retries, Arduino.setPump, (self, pumpNumber, turnOn, 0), not turnOn)
-        LOGGER.debug(f'Pump {pumpNumber} is {"on" if turnOn else "off"}')
+        LOGGER.debug(f"Pump {pumpNumber} is {"on" if turnOn else "off"}")
 
 
     def setPumpOnTimer(self, pumpNumber:int, timeOn_ms:int, retries:int=3) -> None:
