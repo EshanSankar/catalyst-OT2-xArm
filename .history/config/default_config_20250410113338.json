@@ -1,0 +1,53 @@
+{
+    "hardware": {
+        "robot_ip": "100.67.89.154",
+        "arduino_port": "/dev/ttyUSB0",
+        "auto_disconnect": true
+    },
+    
+    "experiment": {
+        "results_dir": "results",
+        "auto_upload": true,
+        "save_raw_data": true
+    },
+    
+    "logging": {
+        "level": "INFO",
+        "file": "experiment.log",
+        "max_size": 10485760,
+        "backup_count": 5
+    },
+    
+    "upload": {
+        "service": "s3",
+        "bucket": "experiment-results",
+        "prefix": "electrochemistry/"
+    },
+    
+    "defaults": {
+        "arduino_control": {
+            "base0_temp": 25.0,
+            "pump0_ml": 0.0,
+            "ultrasonic0_ms": 0
+        },
+        "reference": {
+            "type": "RE",
+            "enabled": true
+        }
+    },
+    
+    "limits": {
+        "temperature": {
+            "min": 0.0,
+            "max": 100.0
+        },
+        "voltage": {
+            "min": -2.0,
+            "max": 2.0
+        },
+        "current": {
+            "min": -1.0,
+            "max": 1.0
+        }
+    }
+} 

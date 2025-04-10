@@ -1,0 +1,84 @@
+# Catalyst OT2-Arduino System
+
+A modular automated experimental system for electrochemistry using OT-2 and Arduino.
+
+## Features
+
+- Modular backend system for different electrochemical experiments
+- Automated control of OT-2 robot and Arduino devices
+- Support for multiple experiment types:
+  - Cyclic Voltammetry (CVA)
+  - Open Circuit Voltage (OCV)
+  - Chronopotentiometry (CP)
+  - Linear Sweep Voltammetry (LSV)
+  - Potentiostatic EIS (PEIS)
+- Real-time data processing and analysis
+- Comprehensive parameter validation
+- Docker support for easy deployment
+
+## Installation
+
+See [Installation Guide](docs/installation.md) for detailed instructions.
+
+## Hardware Setup
+
+See [Hardware Setup Guide](docs/hardware_setup.md) for detailed instructions.
+
+## Usage
+
+```python
+from backends import CVABackend
+from utils.validation import validate_parameters
+
+# Create backend instance
+backend = CVABackend()
+
+# Define experiment parameters
+params = {
+    "start_voltage": -0.5,
+    "end_voltage": 0.5,
+    "scan_rate": 0.1,
+    "cycles": 3,
+    "arduino_control": {
+        "temperature": 25.0,
+        "pump_volume": 1.0,
+        "ultrasonic_timing": 1000
+    }
+}
+
+# Execute experiment
+results = backend.execute_experiment(params)
+```
+
+## Documentation
+
+- [API Reference](docs/api_reference.md)
+- [Installation Guide](docs/installation.md)
+- [Hardware Setup](docs/hardware_setup.md)
+
+## Development
+
+1. Clone the repository
+2. Install dependencies
+3. Run tests
+
+```bash
+git clone https://github.com/SissiFeng/catalyst-OT2.git
+cd catalyst-OT2
+pip install -r requirements.txt
+python -m pytest tests/
+```
+
+## Docker Support
+
+```bash
+# Build and run with Docker
+docker-compose build
+docker-compose up -d
+```
+
+## License
+
+MIT License
+
+Copyright (c) 2024 Sissi Feng

@@ -1,0 +1,42 @@
+{
+    "voltage": {
+        "min": -10.0,
+        "max": 10.0,
+        "description": "Voltage limits in Volts"
+    },
+    "current": {
+        "min": -2.0,
+        "max": 2.0,
+        "description": "Current limits in Amperes"
+    },
+    "temperature": {
+        "min": 10.0,
+        "max": 80.0,
+        "description": "Temperature limits in Celsius"
+    },
+    "frequency": {
+        "min": 0.1,
+        "max": 1000000.0,
+        "description": "Frequency limits in Hz"
+    },
+    "scan_rate": {
+        "min": 0.001,
+        "max": 10.0,
+        "description": "Scan rate limits in V/s"
+    },
+    "cycles": {
+        "min": 1,
+        "max": 1000,
+        "description": "Number of cycles limits"
+    },
+    "pump_volume": {
+        "min": 0.0,
+        "max": 10.0,
+        "description": "Pump volume limits in mL"
+    },
+    "ultrasonic_timing": {
+        "min": 0,
+        "max": 10000,
+        "description": "Ultrasonic timing limits in ms"
+    }
+} 
