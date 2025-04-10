@@ -162,7 +162,7 @@ class Arduino:
             self.connection.write(f"set_ultrasonic_off {baseNumber}\n".encode())
 
         self.__getSafeResponse(retries, Arduino.setUltrasonic, (self, baseNumber, turnOn, 0), not turnOn)        
-        LOGGER.debug(f"Base {baseNumber}'s sonicator is {"on" if turnOn else "off"}")
+        LOGGER.debug(f'Base {baseNumber}\'s sonicator is {"on" if turnOn else "off"}')
         
 
     def setUltrasonicOnTimer(self, baseNumber:int, timeOn_ms:int, retries:int=3) -> None:
