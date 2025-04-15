@@ -1,0 +1,218 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "type": "object",
+  "required": ["nodes", "edges"],
+  "properties": {
+    "global_config": {
+      "type": "object",
+      "properties": {
+        "labware": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["type", "slot"],
+            "properties": {
+              "type": {"type": "string"},
+              "slot": {"type": "integer", "minimum": 1, "maximum": 11},
+              "working_well": {"type": "string"}
+            }
+          }
+        },
+        "instruments": {
+          "type": "object",
+          "properties": {
+            "pipette": {
+              "type": "object",
+              "required": ["type", "mount"],
+              "properties": {
+                "type": {"type": "string"},
+                "mount": {"type": "string", "enum": ["left", "right"]}
+              }
+            }
+          }
+        },
+        "solutions": {
+          "type": "object",
+          "additionalProperties": {
+            "type": "object",
+            "required": ["labware", "position"],
+            "properties": {
+              "labware": {"type": "string"},
+              "position": {"type": "string"}
+            }
+          }
+        },
+        "arduino_control": {
+          "type": "object",
+          "properties": {
+            "pumps": {
+              "type": "object",
+              "additionalProperties": {"type": "integer", "minimum": 0}
+            },
+            "temperature": {
+              "type": "object",
+              "properties": {
+                "default": {"type": "number", "minimum": 0, "maximum": 100}
+              }
+            }
+          }
+        },
+        "biologic_control": {
+          "type": "object",
+          "properties": {
+            "reference_electrode": {
+              "type": "object",
+              "required": ["type", "enabled"],
+              "properties": {
+                "type": {"type": "string", "enum": ["RE", "CE"]},
+                "enabled": {"type": "boolean"}
+              }
+            }
+          }
+        }
+      }
+    },
+    "nodes": {
+      "type": "array",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "type", "label", "params"],
+        "properties": {
+          "id": {"type": "string"},
+          "type": {
+            "type": "string",
+            "enum": ["OCV", "CP", "CV", "CVA", "PEIS", "LSV", "CV_activation", "CV_stability"]
+          },
+          "label": {"type": "string"},
+          "params": {
+            "type": "object",
+            "properties": {
+              "duration_s": {"type": "number", "minimum": 0},
+              "sample_rate": {"type": "number", "minimum": 0},
+              "current_mA": {"type": "number"},
+              "start_voltage_V": {"type": "number"},
+              "end_voltage_V": {"type": "number"},
+              "scan_rate_mV_s": {"type": "number", "minimum": 0},
+              "cycles": {"type": "integer", "minimum": 1},
+              "start_freq_Hz": {"type": "number", "minimum": 0},
+              "end_freq_Hz": {"type": "number", "minimum": 0},
+              "amplitude_mV": {"type": "number", "minimum": 0},
+              "arduino_control": {
+                "type": "object",
+                "properties": {
+                  "base0_temp": {"type": "number", "minimum": 0, "maximum": 100},
+                  "pump0_ml": {"type": "number", "minimum": 0},
+                  "ultrasonic0_ms": {"type": "integer", "minimum": 0}
+                }
+              },
+              "ot2_actions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["action"],
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "enum": ["pick_up_tip", "drop_tip", "move_to", "wash", "home"]
+                    },
+                    "labware": {"type": "string"},
+                    "well": {"type": "string"},
+                    "offset": {
+                      "type": "object",
+                      "properties": {
+                        "x": {"type": "number"},
+                        "y": {"type": "number"},
+                        "z": {"type": "number"}
+                      }
+                    },
+                    "arduino_actions": {
+                      "type": "object",
+                      "properties": {
+                        "pump0_ml": {"type": "number", "minimum": 0},
+                        "pump1_ml": {"type": "number", "minimum": 0},
+                        "pump2_ml": {"type": "number", "minimum": 0},
+                        "ultrasonic0_ms": {"type": "integer", "minimum": 0}
+                      }
+                    }
+                  },
+                  "allOf": [
+                    {
+                      "if": {
+                        "properties": {"action": {"enum": ["pick_up_tip", "drop_tip", "move_to"]}}
+                      },
+                      "then": {
+                        "required": ["labware", "well"]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {"action": {"enum": ["wash"]}}
+                      },
+                      "then": {
+                        "required": ["arduino_actions"]
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "allOf": [
+              {
+                "if": {
+                  "properties": {"type": {"enum": ["OCV"]}}
+                },
+                "then": {
+                  "required": ["duration_s", "sample_rate"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {"type": {"enum": ["CP"]}}
+                },
+                "then": {
+                  "required": ["current_mA", "duration_s"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {"type": {"enum": ["CV", "CVA", "CV_activation", "CV_stability"]}}
+                },
+                "then": {
+                  "required": ["start_voltage_V", "end_voltage_V", "scan_rate_mV_s", "cycles"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {"type": {"enum": ["PEIS"]}}
+                },
+                "then": {
+                  "required": ["start_freq_Hz", "end_freq_Hz", "amplitude_mV"]
+                }
+              },
+              {
+                "if": {
+                  "properties": {"type": {"enum": ["LSV"]}}
+                },
+                "then": {
+                  "required": ["start_voltage_V", "end_voltage_V", "scan_rate_mV_s"]
+                }
+              }
+            ]
+          }
+        }
+      }
+    },
+    "edges": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["source", "target"],
+        "properties": {
+          "source": {"type": "string"},
+          "target": {"type": "string"}
+        }
+      }
+    }
+  }
+}

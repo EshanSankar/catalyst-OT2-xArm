@@ -1,0 +1,53 @@
+{
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "实验工作流Schema",
+  "description": "用于验证实验工作流JSON的schema",
+  "type": "object",
+  "required": ["name", "version", "experiments"],
+  "properties": {
+    "name": {
+      "type": "string",
+      "description": "工作流名称"
+    },
+    "version": {
+      "type": "string",
+      "description": "工作流版本",
+      "pattern": "^\\d+\\.\\d+\\.\\d+$"
+    },
+    "description": {
+      "type": "string",
+      "description": "工作流描述"
+    },
+    "experiments": {
+      "type": "array",
+      "description": "实验列表",
+      "minItems": 1,
+      "items": {
+        "type": "object",
+        "required": ["id", "uo_type", "parameters"],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "实验ID"
+          },
+          "uo_type": {
+            "type": "string",
+            "description": "实验类型",
+            "enum": ["CVA", "PEIS", "OCV", "CP", "LSV"]
+          },
+          "parameters": {
+            "type": "object",
+            "description": "实验参数"
+          },
+          "dependencies": {
+            "type": "array",
+            "description": "依赖的其他实验ID",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      }
+    }
+  }
+} 

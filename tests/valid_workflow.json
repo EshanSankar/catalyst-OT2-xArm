@@ -1,0 +1,37 @@
+{
+  "name": "电化学表征工作流",
+  "version": "1.0.0",
+  "description": "一个用于电化学表征的测试工作流",
+  "experiments": [
+    {
+      "id": "exp_001",
+      "uo_type": "OCV",
+      "parameters": {
+        "duration": 60,
+        "sample_interval": 1
+      }
+    },
+    {
+      "id": "exp_002",
+      "uo_type": "CVA",
+      "parameters": {
+        "start_voltage": "0.0V",
+        "end_voltage": "1.0V",
+        "scan_rate": 0.05,
+        "cycles": 3
+      },
+      "dependencies": ["exp_001"]
+    },
+    {
+      "id": "exp_003",
+      "uo_type": "PEIS",
+      "parameters": {
+        "frequency_high": "100000 Hz",
+        "frequency_low": "0.1 Hz",
+        "points_per_decade": 10,
+        "amplitude": "10 mV"
+      },
+      "dependencies": ["exp_002"]
+    }
+  ]
+} 

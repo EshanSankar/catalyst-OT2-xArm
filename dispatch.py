@@ -8,12 +8,14 @@ based on the experiment type (uo_type).
 """
 
 import logging
-from typing import Dict, Any, Optional, Type, Callable
+from typing import Dict, Any, Optional
 import importlib
 from datetime import datetime
 import uuid
 import os
 from abc import ABC, abstractmethod
+import sys
+import json
 
 from parsing import parse_experiment_parameters
 
@@ -50,7 +52,6 @@ class LocalResultUploader(ResultUploader):
             os.makedirs(exp_dir, exist_ok=True)
             
             # Save results as JSON
-            import json
             result_path = os.path.join(exp_dir, "results.json")
             with open(result_path, 'w') as f:
                 json.dump(results, f, indent=2)
@@ -75,7 +76,6 @@ class S3ResultUploader(ResultUploader):
     def upload(self, results: Dict[str, Any], experiment_id: str) -> bool:
         try:
             # Convert results to JSON string
-            import json
             results_json = json.dumps(results, indent=2)
             
             # Upload to S3
@@ -248,6 +248,57 @@ class ExperimentDispatcher:
             except Exception as e:
                 LOGGER.error(f"Error cleaning up {uo_type} backend: {str(e)}")
 
+def validate_workflow_json(workflow_file, schema_file="workflow_schema.json"):
+    """
+    Validate a workflow JSON file against schema.
+    
+    Args:
+        workflow_file (str): Path to workflow JSON file
+        schema_file (str): Path to schema JSON file
+    
+    Returns:
+        bool: True if valid, False otherwise
+        
+    Raises:
+        ValueError: If validation fails with details of the error
+    """
+    try:
+        from jsonschema import validate, ValidationError
+        
+        # Load schema
+        try:
+            with open(schema_file, 'r', encoding='utf-8') as f:
+                schema = json.load(f)
+        except FileNotFoundError:
+            LOGGER.warning(f"Schema file {schema_file} not found. Skipping validation.")
+            return True
+        except json.JSONDecodeError as e:
+            LOGGER.warning(f"Invalid JSON in schema file {schema_file}: {e}. Skipping validation.")
+            return True
+            
+        # Load workflow
+        try:
+            with open(workflow_file, 'r', encoding='utf-8') as f:
+                workflow = json.load(f)
+        except FileNotFoundError:
+            raise ValueError(f"Workflow file {workflow_file} not found")
+        except json.JSONDecodeError as e:
+            raise ValueError(f"Invalid JSON in workflow file {workflow_file}: {e}")
+        
+        # Validate
+        validate(instance=workflow, schema=schema)
+        LOGGER.info(f"Workflow file {workflow_file} is valid!")
+        return True
+        
+    except ValidationError as e:
+        error_message = f"Validation error: {e.message}"
+        if e.path:
+            path_str = " -> ".join([str(p) for p in e.path])
+            error_message += f" at: {path_str}"
+        raise ValueError(error_message)
+    except ImportError:
+        LOGGER.warning("jsonschema library not installed. Skipping validation.")
+        return True
 
 # Example usage
 if __name__ == "__main__":
@@ -256,6 +307,34 @@ if __name__ == "__main__":
         level=logging.INFO,
         format="%(asctime)s - %(name)s - %(levelname)s - %(message)s"
     )
+    
+    # Check if workflow file is provided
+    if len(sys.argv) < 2:
+        print("Usage: python dispatch.py <workflow_json_file> [schema_json_file]")
+        sys.exit(1)
+        
+    workflow_file = sys.argv[1]
+    schema_file = sys.argv[2] if len(sys.argv) > 2 else "workflow_schema.json"
+    
+    # Validate workflow JSON
+    try:
+        if not validate_workflow_json(workflow_file, schema_file):
+            sys.exit(1)  # Exit if validation fails
+    except ValueError as e:
+        LOGGER.error(str(e))
+        sys.exit(1)
+    
+    # Load workflow file
+    try:
+        with open(workflow_file, 'r', encoding='utf-8') as f:
+            workflow = json.load(f)
+    except Exception as e:
+        LOGGER.error(f"Error loading workflow file: {str(e)}")
+        sys.exit(1)
+        
+    # Process workflow
+    # TODO: Implement workflow execution logic based on the JSON structure
+    # For now, use the example code:
     
     # Example experiment
     example_uo = {
