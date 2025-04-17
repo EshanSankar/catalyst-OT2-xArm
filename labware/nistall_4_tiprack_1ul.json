@@ -1,0 +1,105 @@
+{
+  "ordering": [
+    [
+      "A1",
+      "B1"
+    ],
+    [
+      "A2",
+      "B2"
+    ]
+  ],
+  "brand": {
+    "brand": "NIST",
+    "brandId": [
+      "nistall_4_tiprack_1ul"
+    ]
+  },
+  "metadata": {
+    "displayName": "NIST 4 Tip Rack 1 µL",
+    "displayCategory": "tipRack",
+    "displayVolumeUnits": "µL",
+    "tags": []
+  },
+  "dimensions": {
+    "xDimension": 127.76,
+    "yDimension": 85.48,
+    "zDimension": 60.0
+  },
+  "wells": {
+    "A1": {
+      "depth": 40.0,
+      "totalLiquidVolume": 1,
+      "shape": "circular",
+      "diameter": 5.0,
+      "x": 41.38,
+      "y": 63.74,
+      "z": 20.0
+    },
+    "B1": {
+      "depth": 40.0,
+      "totalLiquidVolume": 1,
+      "shape": "circular",
+      "diameter": 5.0,
+      "x": 41.38,
+      "y": 21.74,
+      "z": 20.0
+    },
+    "A2": {
+      "depth": 40.0,
+      "totalLiquidVolume": 1,
+      "shape": "circular",
+      "diameter": 5.0,
+      "x": 87.38,
+      "y": 63.74,
+      "z": 20.0
+    },
+    "B2": {
+      "depth": 40.0,
+      "totalLiquidVolume": 1,
+      "shape": "circular",
+      "diameter": 5.0,
+      "x": 87.38,
+      "y": 21.74,
+      "z": 20.0
+    }
+  },
+  "groups": [
+    {
+      "metadata": {
+        "displayName": "NIST 4 Tip Rack 1 µL",
+        "displayCategory": "tipRack",
+        "wellBottomShape": "v"
+      },
+      "brand": {
+        "brand": "NIST",
+        "brandId": [
+          "nistall_4_tiprack_1ul"
+        ]
+      },
+      "wells": [
+        "A1",
+        "B1",
+        "A2",
+        "B2"
+      ]
+    }
+  ],
+  "parameters": {
+    "format": "irregular",
+    "quirks": [],
+    "isTiprack": true,
+    "tipLength": 40.0,
+    "tipOverlap": 0.5,
+    "loadName": "nistall_4_tiprack_1ul",
+    "isMagneticModuleCompatible": false
+  },
+  "namespace": "custom_beta",
+  "version": 1,
+  "schemaVersion": 2,
+  "cornerOffsetFromSlot": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  }
+}

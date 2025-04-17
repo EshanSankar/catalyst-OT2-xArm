@@ -1,0 +1,101 @@
+{
+  "slots": {
+    "1": {
+      "labware_type": "opentrons_96_tiprack_1000ul",
+      "labware_name": "tip_rack",
+      "description": "1000µL tip rack for liquid transfers"
+    },
+    "2": {
+      "labware_type": "opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical",
+      "labware_name": "solution_rack",
+      "description": "Rack containing electrolyte and wash solutions"
+    },
+    "3": {
+      "labware_type": "opentrons_10_tuberack_falcon_4x50ml_6x15ml_conical",
+      "labware_name": "wash_station",
+      "description": "Wash station for electrode cleaning"
+    },
+    "4": {
+      "labware_type": "opentrons_96_tiprack_300ul",
+      "labware_name": "electrode_tip_rack",
+      "description": "300µL tip rack for electrode tips (moved from slot 10)"
+    },
+    "5": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "6": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "7": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "8": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "9": {
+      "labware_type": "opentrons_96_wellplate_200ul_pcr_full_skirt",
+      "labware_name": "reactor_plate",
+      "description": "Reactor plate for electrochemical experiments",
+      "working_well": "B2"
+    },
+    "10": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot (electrode_tip_rack moved to slot 4)"
+    },
+    "11": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "12": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    }
+  },
+  "pipettes": {
+    "right": {
+      "type": "p1000_single_gen2",
+      "name": "pipette"
+    },
+    "left": {
+      "type": null,
+      "name": null
+    }
+  },
+  "solutions": {
+    "electrolyte": {
+      "labware": "solution_rack",
+      "position": "A1"
+    },
+    "wash_solution": {
+      "labware": "solution_rack",
+      "position": "A2"
+    }
+  },
+  "arduino_control": {
+    "pumps": {
+      "water": 0,
+      "acid": 1,
+      "out": 2
+    },
+    "temperature": {
+      "default": 25.0
+    }
+  },
+  "biologic_control": {
+    "reference_electrode": {
+      "type": "RE",
+      "enabled": true
+    }
+  }
+}
