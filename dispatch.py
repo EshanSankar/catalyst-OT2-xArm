@@ -464,12 +464,30 @@ if __name__ == "__main__":
                             else:  # Linux/Mac
                                 arduino_port = "/dev/ttyUSB0"
                         LOGGER.info(f"Creating Arduino client with port: {arduino_port}")
-                        arduino_client = Arduino(arduinoPort=arduino_port)
-                        LOGGER.info("Successfully created Arduino client")
 
-                        # Replace the Arduino client in the executor
-                        executor.arduino_client = arduino_client
-                        LOGGER.info("Using real Arduino client")
+                        # Close any existing connections to the port
+                        try:
+                            import serial
+                            ser = serial.Serial(arduino_port)
+                            ser.close()
+                            LOGGER.info(f"Closed existing connection to {arduino_port}")
+                        except Exception as e:
+                            LOGGER.info(f"No existing connection to close: {str(e)}")
+
+                        # Try to create the Arduino client
+                        try:
+                            arduino_client = Arduino(arduinoPort=arduino_port)
+                            LOGGER.info("Successfully created Arduino client")
+
+                            # Replace the Arduino client in the executor
+                            executor.arduino_client = arduino_client
+                            LOGGER.info("Using real Arduino client")
+                        except PermissionError as e:
+                            LOGGER.warning(f"Permission error connecting to Arduino: {str(e)}")
+                            LOGGER.warning("Using mock Arduino client instead")
+                        except Exception as e:
+                            LOGGER.warning(f"Error creating Arduino client: {str(e)}")
+                            LOGGER.warning("Using mock Arduino client instead")
                     except Exception as e:
                         LOGGER.warning(f"Failed to create Arduino client: {str(e)}")
             except Exception as e:

@@ -1,0 +1,153 @@
+{
+  "ordering": [
+    [
+      "A1",
+      "A2",
+      "A3",
+      "A4",
+      "A5",
+      "A6",
+      "A7",
+      "A8"
+    ]
+  ],
+  "brand": {
+    "brand": "NIST",
+    "brandId": [
+      "nis_8_reservoir_25000ul"
+    ]
+  },
+  "metadata": {
+    "displayName": "NIST 8 Reservoir 25000 µL",
+    "displayCategory": "reservoir",
+    "displayVolumeUnits": "µL",
+    "tags": []
+  },
+  "dimensions": {
+    "xDimension": 127.76,
+    "yDimension": 85.48,
+    "zDimension": 25.0
+  },
+  "wells": {
+    "A1": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 18.38,
+      "y": 42.74,
+      "z": 5.0
+    },
+    "A2": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 30.38,
+      "y": 42.74,
+      "z": 5.0
+    },
+    "A3": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 42.38,
+      "y": 42.74,
+      "z": 5.0
+    },
+    "A4": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 54.38,
+      "y": 42.74,
+      "z": 5.0
+    },
+    "A5": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 66.38,
+      "y": 42.74,
+      "z": 5.0
+    },
+    "A6": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 78.38,
+      "y": 42.74,
+      "z": 5.0
+    },
+    "A7": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 90.38,
+      "y": 42.74,
+      "z": 5.0
+    },
+    "A8": {
+      "depth": 20.0,
+      "totalLiquidVolume": 25000,
+      "shape": "rectangular",
+      "xDimension": 10.0,
+      "yDimension": 70.0,
+      "x": 102.38,
+      "y": 42.74,
+      "z": 5.0
+    }
+  },
+  "groups": [
+    {
+      "metadata": {
+        "displayName": "NIST 8 Reservoir 25000 µL",
+        "displayCategory": "reservoir",
+        "wellBottomShape": "flat"
+      },
+      "brand": {
+        "brand": "NIST",
+        "brandId": [
+          "nis_8_reservoir_25000ul"
+        ]
+      },
+      "wells": [
+        "A1",
+        "A2",
+        "A3",
+        "A4",
+        "A5",
+        "A6",
+        "A7",
+        "A8"
+      ]
+    }
+  ],
+  "parameters": {
+    "format": "irregular",
+    "quirks": [],
+    "isTiprack": false,
+    "isMagneticModuleCompatible": false,
+    "loadName": "nis_8_reservoir_25000ul"
+  },
+  "namespace": "custom_beta",
+  "version": 1,
+  "schemaVersion": 2,
+  "cornerOffsetFromSlot": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  }
+}

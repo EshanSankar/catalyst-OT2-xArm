@@ -153,22 +153,29 @@ class WorkflowExecutor:
 
     def connect_devices(self) -> bool:
         """Connect to OT-2 and Arduino devices."""
+        success = True
+
         try:
             # Connect to OT-2
             robot_ip = self.workflow.get("global_config", {}).get("hardware", {}).get("ot2", {}).get("ip", "100.67.89.154")
             LOGGER.info(f"Connecting to OT-2 at {robot_ip}...")
             self.ot2_client = opentronsClient(strRobotIP=robot_ip)
             LOGGER.info("Connected to OT-2")
+        except Exception as e:
+            LOGGER.error(f"Failed to connect to OT-2: {str(e)}")
+            success = False
 
+        try:
             # Connect to Arduino
             LOGGER.info("Connecting to Arduino...")
             self.arduino_client = Arduino()
             LOGGER.info("Connected to Arduino")
-
-            return True
         except Exception as e:
-            LOGGER.error(f"Failed to connect to devices: {str(e)}")
-            return False
+            LOGGER.warning(f"Failed to connect to Arduino: {str(e)}")
+            LOGGER.warning("Some functionality may be limited")
+            # Don't set success to False here, as we can still proceed without Arduino
+
+        return success
 
     def setup_labware(self) -> bool:
         """Set up labware on the OT-2 robot."""
@@ -185,29 +192,72 @@ class WorkflowExecutor:
                 # Check if it's a standard labware or custom labware
                 if labware_type.startswith("opentrons_"):
                     # Standard Opentrons labware
-                    self.labware_ids[labware_name] = self.ot2_client.loadLabware(
-                        intSlot=slot,
-                        strLabwareName=labware_type
-                    )
+                    try:
+                        labware_id = self.ot2_client.loadLabware(
+                            intSlot=slot,
+                            strLabwareName=labware_type
+                        )
+
+                        # Check if the labware_id is a valid string
+                        if isinstance(labware_id, str) and labware_id:
+                            self.labware_ids[labware_name] = labware_id
+                            LOGGER.info(f"Successfully loaded standard labware {labware_type} in slot {slot} with ID: {labware_id}")
+                        else:
+                            # If the labware_id is not valid, use a mock ID
+                            self.labware_ids[labware_name] = f"{labware_type}_{slot}"
+                            LOGGER.warning(f"Invalid labware ID returned. Using mock labware ID: {self.labware_ids[labware_name]}")
+                    except Exception as e:
+                        # If there's an exception, use a mock ID
+                        self.labware_ids[labware_name] = f"{labware_type}_{slot}"
+                        LOGGER.warning(f"Exception loading standard labware. Using mock labware ID: {self.labware_ids[labware_name]}")
+                        LOGGER.debug(f"Exception details: {str(e)}")
                 else:
                     # Custom labware - load from JSON file or use mock labware
                     custom_labware_path = os.path.join(os.getcwd(), 'labware', f"{labware_type}.json")
+                    LOGGER.info(f"Looking for custom labware at: {custom_labware_path}")
 
-                    try:
-                        with open(custom_labware_path, 'r', encoding='utf-8') as f:
-                            custom_labware = json.load(f)
+                    if os.path.exists(custom_labware_path):
+                        try:
+                            with open(custom_labware_path, 'r', encoding='utf-8') as f:
+                                custom_labware = json.load(f)
 
-                        self.labware_ids[labware_name] = self.ot2_client.loadCustomLabware(
-                            dicLabware=custom_labware,
-                            intSlot=slot
-                        )
-                    except FileNotFoundError:
+                            LOGGER.info(f"Successfully loaded custom labware definition from {custom_labware_path}")
+                            try:
+                                # Load custom labware
+                                try:
+                                    labware_id = self.ot2_client.loadCustomLabware(
+                                        dicLabware=custom_labware,
+                                        intSlot=slot
+                                    )
+
+                                    # Check if the labware_id is a valid string
+                                    if isinstance(labware_id, str) and labware_id:
+                                        self.labware_ids[labware_name] = labware_id
+                                        LOGGER.info(f"Successfully loaded custom labware {labware_type} in slot {slot} with ID: {labware_id}")
+                                    else:
+                                        # If the labware_id is not valid, use a mock ID
+                                        self.labware_ids[labware_name] = f"{labware_type}_{slot}"
+                                        LOGGER.warning(f"Invalid labware ID returned. Using mock labware ID: {self.labware_ids[labware_name]}")
+                                except Exception as e:
+                                    # If there's an exception, use a mock ID
+                                    self.labware_ids[labware_name] = f"{labware_type}_{slot}"
+                                    LOGGER.warning(f"Exception loading custom labware. Using mock labware ID: {self.labware_ids[labware_name]}")
+                                    LOGGER.debug(f"Exception details: {str(e)}")
+                            except Exception as e:
+                                LOGGER.error(f"Failed to load custom labware {labware_type} in slot {slot}: {str(e)}")
+                                # Fall back to mock labware
+                                self.labware_ids[labware_name] = f"{labware_type}_{slot}"
+                                LOGGER.warning(f"Using mock labware ID: {self.labware_ids[labware_name]}")
+                        except Exception as e:
+                            LOGGER.error(f"Failed to parse custom labware file {custom_labware_path}: {str(e)}")
+                            # Fall back to mock labware
+                            self.labware_ids[labware_name] = f"{labware_type}_{slot}"
+                            LOGGER.warning(f"Using mock labware ID: {self.labware_ids[labware_name]}")
+                    else:
                         # If the custom labware file is not found, create a mock labware ID
-                        LOGGER.warning(f"Custom labware file for {labware_type} not found. Using mock labware.")
+                        LOGGER.warning(f"Custom labware file for {labware_type} not found at {custom_labware_path}. Using mock labware.")
                         self.labware_ids[labware_name] = f"{labware_type}_{slot}"
-                    except Exception as e:
-                        LOGGER.error(f"Failed to load custom labware {labware_type}: {str(e)}")
-                        return False
+                        LOGGER.warning(f"Using mock labware ID: {self.labware_ids[labware_name]}")
 
             # Load pipettes from global config
             pipette_config = self.workflow.get("global_config", {}).get("instruments", {}).get("pipette", {})
@@ -322,26 +372,38 @@ class WorkflowExecutor:
 
         LOGGER.info(f"Picking up tip from {labware} {well}")
 
-        # Move to the tip rack
-        self.ot2_client.moveToWell(
-            strLabwareName=self.labware_ids.get(labware),
-            strWellName=well,
-            strPipetteName="p1000_single_gen2",
-            strOffsetStart="top",
-            fltOffsetX=offset_x,
-            fltOffsetY=offset_y,
-            fltOffsetZ=offset_z,
-            intSpeed=100
-        )
+        # Check if the labware exists
+        if labware not in self.labware_ids:
+            LOGGER.error(f"Labware {labware} not found in labware_ids")
+            LOGGER.info(f"Available labware: {list(self.labware_ids.keys())}")
+            LOGGER.warning(f"Skipping pick_up_tip action for {labware} {well}")
+            return
 
-        # Pick up the tip
-        self.ot2_client.pickUpTip(
-            strLabwareName=self.labware_ids.get(labware),
-            strPipetteName="p1000_single_gen2",
-            strWellName=well,
-            fltOffsetX=offset_x,
-            fltOffsetY=offset_y
-        )
+        # Move to the tip rack
+        try:
+            self.ot2_client.moveToWell(
+                strLabwareName=self.labware_ids.get(labware),
+                strWellName=well,
+                strPipetteName="p1000_single_gen2",
+                strOffsetStart="top",
+                fltOffsetX=offset_x,
+                fltOffsetY=offset_y,
+                fltOffsetZ=offset_z,
+                intSpeed=100
+            )
+
+            # Pick up the tip
+            self.ot2_client.pickUpTip(
+                strLabwareName=self.labware_ids.get(labware),
+                strPipetteName="p1000_single_gen2",
+                strWellName=well,
+                fltOffsetX=offset_x,
+                fltOffsetY=offset_y
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to pick up tip: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
 
     def _execute_drop_tip(self, action: Dict[str, Any]) -> None:
         """Execute drop_tip action."""
@@ -353,28 +415,40 @@ class WorkflowExecutor:
 
         LOGGER.info(f"Dropping tip to {labware} {well}")
 
-        # Move to the tip rack
-        self.ot2_client.moveToWell(
-            strLabwareName=self.labware_ids.get(labware),
-            strWellName=well,
-            strPipetteName="p1000_single_gen2",
-            strOffsetStart="top",
-            fltOffsetX=offset_x,
-            fltOffsetY=offset_y,
-            fltOffsetZ=offset_z,
-            intSpeed=100
-        )
+        # Check if the labware exists
+        if labware not in self.labware_ids:
+            LOGGER.error(f"Labware {labware} not found in labware_ids")
+            LOGGER.info(f"Available labware: {list(self.labware_ids.keys())}")
+            LOGGER.warning(f"Skipping drop_tip action for {labware} {well}")
+            return
 
-        # Drop the tip
-        self.ot2_client.dropTip(
-            strLabwareName=self.labware_ids.get(labware),
-            strPipetteName="p1000_single_gen2",
-            strWellName=well,
-            strOffsetStart="bottom",
-            fltOffsetX=offset_x,
-            fltOffsetY=offset_y,
-            fltOffsetZ=offset_z
-        )
+        # Move to the tip rack
+        try:
+            self.ot2_client.moveToWell(
+                strLabwareName=self.labware_ids.get(labware),
+                strWellName=well,
+                strPipetteName="p1000_single_gen2",
+                strOffsetStart="top",
+                fltOffsetX=offset_x,
+                fltOffsetY=offset_y,
+                fltOffsetZ=offset_z,
+                intSpeed=100
+            )
+
+            # Drop the tip
+            self.ot2_client.dropTip(
+                strLabwareName=self.labware_ids.get(labware),
+                strPipetteName="p1000_single_gen2",
+                strWellName=well,
+                strOffsetStart="bottom",
+                fltOffsetX=offset_x,
+                fltOffsetY=offset_y,
+                fltOffsetZ=offset_z
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to drop tip: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
 
     def _execute_move_to(self, action: Dict[str, Any]) -> None:
         """Execute move_to action."""
@@ -386,17 +460,29 @@ class WorkflowExecutor:
 
         LOGGER.info(f"Moving to {labware} {well}")
 
+        # Check if the labware exists
+        if labware not in self.labware_ids:
+            LOGGER.error(f"Labware {labware} not found in labware_ids")
+            LOGGER.info(f"Available labware: {list(self.labware_ids.keys())}")
+            LOGGER.warning(f"Skipping move_to action for {labware} {well}")
+            return
+
         # Move to the well
-        self.ot2_client.moveToWell(
-            strLabwareName=self.labware_ids.get(labware),
-            strWellName=well,
-            strPipetteName="p1000_single_gen2",
-            strOffsetStart="top",
-            fltOffsetX=offset_x,
-            fltOffsetY=offset_y,
-            fltOffsetZ=offset_z,
-            intSpeed=100
-        )
+        try:
+            self.ot2_client.moveToWell(
+                strLabwareName=self.labware_ids.get(labware),
+                strWellName=well,
+                strPipetteName="p1000_single_gen2",
+                strOffsetStart="top",
+                fltOffsetX=offset_x,
+                fltOffsetY=offset_y,
+                fltOffsetZ=offset_z,
+                intSpeed=100
+            )
+        except Exception as e:
+            LOGGER.error(f"Failed to move to well: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
 
     def _execute_wash(self, action: Dict[str, Any]) -> None:
         """Execute wash action."""
@@ -404,44 +490,69 @@ class WorkflowExecutor:
 
         LOGGER.info("Executing wash action")
 
+        # Check if Arduino client is available
+        if not hasattr(self, 'arduino_client') or self.arduino_client is None:
+            LOGGER.warning("Arduino client not available. Skipping wash action.")
+            return
+
         # Execute Arduino actions
-        for pump_name, volume in arduino_actions.items():
-            if pump_name == "pump0_ml" and volume > 0:
-                LOGGER.info(f"Dispensing {volume}ml from pump 0 (water)")
-                self.arduino_client.dispense_ml(pumpNumber=0, volume=volume)
-            elif pump_name == "pump1_ml" and volume > 0:
-                LOGGER.info(f"Dispensing {volume}ml from pump 1 (acid)")
-                self.arduino_client.dispense_ml(pumpNumber=1, volume=volume)
-            elif pump_name == "pump2_ml" and volume > 0:
-                LOGGER.info(f"Dispensing {volume}ml from pump 2 (waste)")
-                self.arduino_client.dispense_ml(pumpNumber=2, volume=volume)
-            elif pump_name == "ultrasonic0_ms" and volume > 0:
-                LOGGER.info(f"Running ultrasonic for {volume}ms")
-                self.arduino_client.setUltrasonicOnTimer(0, volume)
+        try:
+            for pump_name, volume in arduino_actions.items():
+                if pump_name == "pump0_ml" and volume > 0:
+                    LOGGER.info(f"Dispensing {volume}ml from pump 0 (water)")
+                    self.arduino_client.dispense_ml(pumpNumber=0, volume=volume)
+                elif pump_name == "pump1_ml" and volume > 0:
+                    LOGGER.info(f"Dispensing {volume}ml from pump 1 (acid)")
+                    self.arduino_client.dispense_ml(pumpNumber=1, volume=volume)
+                elif pump_name == "pump2_ml" and volume > 0:
+                    LOGGER.info(f"Dispensing {volume}ml from pump 2 (waste)")
+                    self.arduino_client.dispense_ml(pumpNumber=2, volume=volume)
+                elif pump_name == "ultrasonic0_ms" and volume > 0:
+                    LOGGER.info(f"Running ultrasonic for {volume}ms")
+                    self.arduino_client.setUltrasonicOnTimer(0, volume)
+        except Exception as e:
+            LOGGER.error(f"Failed to execute wash action: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
 
     def _execute_home(self, action: Dict[str, Any]) -> None:
         """Execute home action."""
         LOGGER.info("Homing the robot")
         # action parameter is not used but kept for consistency with other methods
-        self.ot2_client.homeRobot()
+        try:
+            self.ot2_client.homeRobot()
+        except Exception as e:
+            LOGGER.error(f"Failed to home robot: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
 
     def _execute_arduino_control(self, arduino_control: Dict[str, Any]) -> None:
         """Execute Arduino control actions."""
+        # Check if Arduino client is available
+        if not hasattr(self, 'arduino_client') or self.arduino_client is None:
+            LOGGER.warning("Arduino client not available. Skipping Arduino control actions.")
+            return
+
         base0_temp = arduino_control.get("base0_temp")
         pump0_ml = arduino_control.get("pump0_ml")
         ultrasonic0_ms = arduino_control.get("ultrasonic0_ms")
 
-        if base0_temp:
-            LOGGER.info(f"Setting base 0 temperature to {base0_temp}°C")
-            self.arduino_client.setTemp(0, base0_temp)
+        try:
+            if base0_temp:
+                LOGGER.info(f"Setting base 0 temperature to {base0_temp}°C")
+                self.arduino_client.setTemp(0, base0_temp)
 
-        if pump0_ml and pump0_ml > 0:
-            LOGGER.info(f"Dispensing {pump0_ml}ml from pump 0")
-            self.arduino_client.dispense_ml(pumpNumber=0, volume=pump0_ml)
+            if pump0_ml and pump0_ml > 0:
+                LOGGER.info(f"Dispensing {pump0_ml}ml from pump 0")
+                self.arduino_client.dispense_ml(pumpNumber=0, volume=pump0_ml)
 
-        if ultrasonic0_ms and ultrasonic0_ms > 0:
-            LOGGER.info(f"Running ultrasonic for {ultrasonic0_ms}ms")
-            self.arduino_client.setUltrasonicOnTimer(0, ultrasonic0_ms)
+            if ultrasonic0_ms and ultrasonic0_ms > 0:
+                LOGGER.info(f"Running ultrasonic for {ultrasonic0_ms}ms")
+                self.arduino_client.setUltrasonicOnTimer(0, ultrasonic0_ms)
+        except Exception as e:
+            LOGGER.error(f"Failed to execute Arduino control actions: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
 
 if __name__ == "__main__":
     # Check if a workflow file is provided
