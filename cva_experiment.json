@@ -1,0 +1,29 @@
+{
+  "uo_type": "CVA",
+  "parameters": {
+    "start_voltage": "-0.2V",
+    "end_voltage": "1.0V",
+    "scan_rate": 0.05,
+    "cycles": 3,
+    "arduino_control": {
+      "base0_temp": 25.0,
+      "pump0_ml": 0.0,
+      "ultrasonic0_ms": 0
+    },
+    "ot2_actions": [
+      {
+        "action": "pick_up_tip",
+        "labware": "electrode_tip_rack",
+        "well": "A1"
+      },
+      {
+        "action": "move_to",
+        "labware": "reactor_plate",
+        "well": "B2",
+        "offset": {
+          "z": -20
+        }
+      }
+    ]
+  }
+}
