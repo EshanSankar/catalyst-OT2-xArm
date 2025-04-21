@@ -1,0 +1,114 @@
+{
+  "slots": {
+    "1": {
+      "labware_type": "opentrons_96_tiprack_1000ul",
+      "labware_name": "strID_pipetteTipRack",
+      "description": "1000µL tip rack for liquid transfers",
+      "well_positions": {
+        "tip_pickup": "B1",
+        "tip_drop": "B1"
+      }
+    },
+    "2": {
+      "labware_type": "nis_8_reservoir_25000ul",
+      "labware_name": "strID_vialRack_2",
+      "description": "Rack containing electrolyte and wash solutions",
+      "well_positions": {
+        "electrolyte": "B1",
+        "wash_solution": "B2"
+      }
+    },
+    "3": {
+      "labware_type": "nis_2_wellplate_30000ul",
+      "labware_name": "strID_washStation",
+      "description": "Wash station for electrode cleaning",
+      "well_positions": {
+        "wash_position": "B1"
+      }
+    },
+    "4": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "5": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "6": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "7": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "8": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    },
+    "9": {
+      "labware_type": "nis_15_wellplate_3895ul",
+      "labware_name": "strID_NISreactor",
+      "description": "Reactor plate for electrochemical experiments",
+      "well_positions": {
+        "working_well": "B2",
+        "reference_well": "C3"
+      }
+    },
+    "10": {
+      "labware_type": "nistall_4_tiprack_1ul",
+      "labware_name": "strID_electrodeTipRack",
+      "description": "Tip rack for electrode tips",
+      "well_positions": {
+        "tip_pickup": "B1",
+        "tip_drop": "B1"
+      }
+    },
+    "11": {
+      "labware_type": null,
+      "labware_name": null,
+      "description": "Empty slot"
+    }
+  },
+  "pipettes": {
+    "right": {
+      "type": "p1000_single_gen2",
+      "name": "pipette"
+    },
+    "left": {
+      "type": null,
+      "name": null
+    }
+  },
+  "solutions": {
+    "electrolyte": {
+      "labware": "strID_vialRack_2",
+      "position": "B1"
+    },
+    "wash_solution": {
+      "labware": "strID_vialRack_2",
+      "position": "B2"
+    }
+  },
+  "arduino_control": {
+    "pumps": {
+      "water": 0,
+      "acid": 1,
+      "out": 2
+    },
+    "temperature": {
+      "default": 25.0
+    }
+  },
+  "biologic_control": {
+    "reference_electrode": {
+      "type": "RE",
+      "enabled": true
+    }
+  }
+}
