@@ -1,0 +1,200 @@
+{
+  "name": "电化学实验工作流示例",
+  "version": "1.0.0",
+  "description": "一个包含OCV、CVA和PEIS实验的顺序工作流",
+  "global_config": {
+    "labware": {
+      "reactor_plate": {
+        "type": "corning_24_wellplate_3.4ml_flat",
+        "slot": 9,
+        "working_well": "B2"
+      },
+      "wash_station": {
+        "type": "nest_12_reservoir_15ml",
+        "slot": 3
+      },
+      "tip_rack": {
+        "type": "opentrons_96_tiprack_1000ul",
+        "slot": 1
+      },
+      "electrode_tip_rack": {
+        "type": "opentrons_96_tiprack_300ul",
+        "slot": 10
+      },
+      "solution_rack": {
+        "type": "nest_12_reservoir_15ml",
+        "slot": 2
+      }
+    },
+    "instruments": {
+      "pipette": {
+        "type": "p1000_single_gen2",
+        "mount": "right"
+      }
+    },
+    "hardware": {
+      "ot2": {
+        "ip": "100.67.89.154"
+      },
+      "arduino": {
+        "port": "COM3"
+      }
+    }
+  },
+  "experiments": [
+    {
+      "id": "ocv_experiment",
+      "uo_type": "OCV",
+      "parameters": {
+        "duration": 60,
+        "sample_interval": 1.0,
+        "arduino_control": {
+          "base0_temp": 25.0,
+          "pump0_ml": 0.0,
+          "ultrasonic0_ms": 0
+        }
+      },
+      "retry_count": 2,
+      "retry_delay": 30
+    },
+    {
+      "id": "cva_experiment",
+      "uo_type": "CVA",
+      "parameters": {
+        "start_voltage": 0.0,
+        "end_voltage": 1.0,
+        "scan_rate": 0.05,
+        "cycles": 3,
+        "arduino_control": {
+          "base0_temp": 25.0,
+          "pump0_ml": 0.0,
+          "ultrasonic0_ms": 0
+        }
+      },
+      "requires_human_check": true,
+      "human_message": "请检查CVA实验结果，确认是否继续执行PEIS实验",
+      "retry_count": 1,
+      "retry_delay": 60
+    },
+    {
+      "id": "peis_experiment",
+      "uo_type": "PEIS",
+      "parameters": {
+        "dc_voltage": 0.5,
+        "ac_amplitude": 0.01,
+        "frequency_start": 1.0,
+        "frequency_end": 10000,
+        "points_per_decade": 5,
+        "arduino_control": {
+          "base0_temp": 25.0,
+          "pump0_ml": 0.0,
+          "ultrasonic0_ms": 0
+        }
+      },
+      "condition": {
+        "type": "result_check",
+        "experiment_id": "cva_experiment",
+        "parameter": "peak_current",
+        "operator": ">",
+        "value": 0.001
+      },
+      "retry_count": 1,
+      "retry_delay": 60
+    }
+  ],
+  "sequence": [
+    "ocv_experiment",
+    "cva_experiment",
+    "peis_experiment"
+  ],
+  "error_handling": {
+    "retry_count": 3,
+    "retry_delay": 60,
+    "notify_on_failure": ["example@example.com"]
+  },
+  "nodes": [
+    {
+      "id": "node1",
+      "label": "初始化",
+      "params": {
+        "ot2_actions": [
+          {
+            "action": "home"
+          }
+        ]
+      }
+    },
+    {
+      "id": "node2",
+      "label": "OCV实验",
+      "params": {
+        "ot2_actions": [
+          {
+            "action": "pick_up_tip",
+            "labware": "tip_rack",
+            "well": "A1"
+          },
+          {
+            "action": "move_to",
+            "labware": "reactor_plate",
+            "well": "B2"
+          }
+        ],
+        "arduino_control": {
+          "base0_temp": 25.0
+        }
+      }
+    },
+    {
+      "id": "node3",
+      "label": "CVA实验",
+      "params": {
+        "ot2_actions": [
+          {
+            "action": "move_to",
+            "labware": "reactor_plate",
+            "well": "B2"
+          }
+        ],
+        "arduino_control": {
+          "base0_temp": 25.0
+        }
+      }
+    },
+    {
+      "id": "node4",
+      "label": "PEIS实验",
+      "params": {
+        "ot2_actions": [
+          {
+            "action": "move_to",
+            "labware": "reactor_plate",
+            "well": "B2"
+          },
+          {
+            "action": "drop_tip",
+            "labware": "tip_rack",
+            "well": "A1"
+          }
+        ],
+        "arduino_control": {
+          "base0_temp": 25.0
+        }
+      }
+    }
+  ],
+  "edges": [
+    {
+      "source": "node1",
+      "target": "node2"
+    },
+    {
+      "source": "node2",
+      "target": "node3"
+    },
+    {
+      "source": "node3",
+      "target": "node4"
+    }
+  ]
+}

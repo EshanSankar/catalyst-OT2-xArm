@@ -116,20 +116,29 @@ LOGGER = logging.getLogger("WorkflowExecutor")
 class WorkflowExecutor:
     """
     Class for executing OT-2 workflows defined in JSON files.
+
+    This class supports two execution modes:
+    1. Direct execution (legacy mode)
+    2. Prefect-based execution (new mode)
     """
 
-    def __init__(self, workflow_file: str):
+    def __init__(self, workflow_file: str, use_prefect: bool = False, mock_mode: bool = False):
         """
         Initialize the workflow executor.
 
         Args:
             workflow_file (str): Path to the workflow JSON file
+            use_prefect (bool): Whether to use Prefect for workflow execution
+            mock_mode (bool): Whether to use mock mode (no real devices)
         """
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
         self.ot2_client = None
         self.arduino_client = None
         self.labware_ids = {}
+        self.use_prefect = use_prefect
+        self.mock_mode = mock_mode
+        self.prefect_executor = None
 
         # Initialize operation dispatcher
         self.operation_dispatcher = {
@@ -140,7 +149,21 @@ class WorkflowExecutor:
             "home": self._execute_home
         }
 
-        LOGGER.info(f"Workflow Executor initialized with workflow: {workflow_file}")
+        # Initialize Prefect executor if needed
+        if self.use_prefect:
+            try:
+                from prefect_workflow_executor import PrefectWorkflowExecutor
+                self.prefect_executor = PrefectWorkflowExecutor(
+                    workflow_file=workflow_file,
+                    mock_mode=mock_mode
+                )
+                LOGGER.info("Prefect workflow executor initialized")
+            except ImportError as e:
+                LOGGER.error(f"Failed to import Prefect workflow executor: {str(e)}")
+                LOGGER.warning("Falling back to direct execution mode")
+                self.use_prefect = False
+
+        LOGGER.info(f"Workflow Executor initialized with workflow: {workflow_file} (Prefect: {self.use_prefect}, Mock: {self.mock_mode})")
 
     def _load_workflow(self, workflow_file: str) -> Dict[str, Any]:
         """Load workflow from JSON file."""
@@ -276,7 +299,31 @@ class WorkflowExecutor:
             return False
 
     def execute_workflow(self) -> bool:
-        """Execute the workflow."""
+        """
+        Execute the workflow.
+
+        Returns:
+            bool: True if execution was successful, False otherwise
+        """
+        # If using Prefect, delegate to the Prefect executor
+        if self.use_prefect and self.prefect_executor:
+            LOGGER.info("Executing workflow using Prefect")
+            try:
+                result = self.prefect_executor.execute()
+                if result["status"] == "success":
+                    LOGGER.info("Prefect workflow execution completed successfully")
+                    return True
+                else:
+                    LOGGER.error(f"Prefect workflow execution failed: {result.get('message', 'Unknown error')}")
+                    return False
+            except Exception as e:
+                LOGGER.error(f"Failed to execute workflow with Prefect: {str(e)}")
+                LOGGER.warning("Falling back to direct execution mode")
+                # Fall back to direct execution
+                self.use_prefect = False
+
+        # Direct execution (legacy mode)
+        LOGGER.info("Executing workflow using direct execution mode")
         try:
             # Connect to devices
             if not self.connect_devices():
@@ -555,12 +602,17 @@ class WorkflowExecutor:
             return
 
 if __name__ == "__main__":
-    # Check if a workflow file is provided
-    if len(sys.argv) < 2:
-        print("Usage: python workflow_executor.py <workflow_json_file>")
-        sys.exit(1)
+    # Parse command line arguments
+    import argparse
+    parser = argparse.ArgumentParser(description="Execute a workflow defined in a JSON file")
+    parser.add_argument("workflow_file", help="Path to the workflow JSON file")
+    parser.add_argument("--prefect", action="store_true", help="Use Prefect for workflow execution")
+    parser.add_argument("--mock", action="store_true", help="Use mock mode (no real devices)")
+    parser.add_argument("--register", action="store_true", help="Register workflow with Prefect server")
+    parser.add_argument("--project", default="电化学实验", help="Prefect project name for registration")
+    args = parser.parse_args()
 
-    workflow_file = sys.argv[1]
+    workflow_file = args.workflow_file
     print(f"Loading workflow file: {workflow_file}")
 
     try:
@@ -577,10 +629,29 @@ if __name__ == "__main__":
             if 'edges' in workflow_data:
                 print(f"Number of edges: {len(workflow_data['edges'])}")
 
-        # Create and run the workflow executor
-        executor = WorkflowExecutor(workflow_file)
-        print("Workflow executor created successfully")
+        # Create the workflow executor
+        executor = WorkflowExecutor(
+            workflow_file=workflow_file,
+            use_prefect=args.prefect,
+            mock_mode=args.mock
+        )
+        print(f"Workflow executor created successfully (Prefect: {args.prefect}, Mock: {args.mock})")
 
+        # Register with Prefect if requested
+        if args.register and args.prefect:
+            if hasattr(executor, 'prefect_executor') and executor.prefect_executor:
+                try:
+                    result = executor.prefect_executor.register(project_name=args.project)
+                    print(f"Workflow registration result: {result}")
+                    sys.exit(0)
+                except Exception as e:
+                    print(f"Failed to register workflow: {str(e)}")
+                    sys.exit(1)
+            else:
+                print("Prefect executor not available. Cannot register workflow.")
+                sys.exit(1)
+
+        # Execute the workflow
         if executor.execute_workflow():
             print("Workflow executed successfully")
             sys.exit(0)
