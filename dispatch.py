@@ -18,6 +18,7 @@ import sys
 import json
 
 from parsing import parse_experiment_parameters
+from backends import BaseBackend, CVABackend, PEISBackend, OCVBackend, CPBackend, LSVBackend
 
 LOGGER = logging.getLogger(__name__)
 
@@ -101,14 +102,7 @@ class ExperimentDispatcher:
     backend modules and handles the execution flow.
     """
 
-    # Mapping of experiment types to their backend module and class names
-    BACKEND_MAPPING = {
-        "CVA": ("cva_backend", "CVABackend"),
-        "PEIS": ("peis_backend", "PEISBackend"),
-        "OCV": ("ocv_backend", "OCVBackend"),
-        "CP": ("cp_backend", "CPBackend"),
-        "LSV": ("lsv_backend", "LSVBackend")
-    }
+    # Backend classes are imported directly from the backends package
 
     def __init__(
         self,
@@ -151,16 +145,23 @@ class ExperimentDispatcher:
             Backend instance for the experiment type
 
         Raises:
-            ValueError: If backend module cannot be found or instantiated
+            ValueError: If backend type is unknown or cannot be instantiated
         """
-        if uo_type not in self.BACKEND_MAPPING:
+        # Map of experiment types to their backend classes
+        backend_classes = {
+            "CVA": CVABackend,
+            "PEIS": PEISBackend,
+            "OCV": OCVBackend,
+            "CP": CPBackend,
+            "LSV": LSVBackend
+        }
+
+        if uo_type not in backend_classes:
             raise ValueError(f"Unknown experiment type: {uo_type}")
 
         if uo_type not in self.backend_instances:
             try:
-                module_name, class_name = self.BACKEND_MAPPING[uo_type]
-                module = importlib.import_module(module_name)
-                backend_class = getattr(module, class_name)
+                backend_class = backend_classes[uo_type]
                 self.backend_instances[uo_type] = backend_class(
                     config_path=self.config_path,
                     result_uploader=self.result_uploader
