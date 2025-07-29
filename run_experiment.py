@@ -32,7 +32,8 @@ def parse_arguments():
     parser = argparse.ArgumentParser(description="Execute an electrochemical experiment")
     parser.add_argument("experiment_file", help="Path to the experiment JSON file")
     parser.add_argument("--mock", action="store_true", help="Run in mock mode (no real devices)")
-    parser.add_argument("--ip", type=str, help="IP address of the OT-2 robot")
+    parser.add_argument("--ip_ot2", type=str, help="IP address of the OT-2 robot")
+    parser.add_argument("--ip_xarm", type=str, help="IP address of the xArm robot")
     parser.add_argument("--port", type=str, help="Serial port of the Arduino")
     parser.add_argument("--results-dir", type=str, default="results", help="Directory to store results")
     return parser.parse_args()
@@ -47,8 +48,11 @@ def run_experiment(args):
     LOGGER.info(f"Mock mode: {use_mock}")
     LOGGER.info(f"Results directory: {results_dir}")
 
-    if args.ip:
-        LOGGER.info(f"Using custom OT-2 IP: {args.ip}")
+    if args.ip_ot2:
+        LOGGER.info(f"Using custom OT-2 IP: {args.ip_ot2}")
+    
+    if args.ip_xarm:
+        LOGGER.info(f"Using custom xArm IP: {args.ip_xarm}")
 
     if args.port:
         LOGGER.info(f"Using custom Arduino port: {args.port}")

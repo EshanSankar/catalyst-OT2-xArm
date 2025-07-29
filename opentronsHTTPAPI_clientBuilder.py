@@ -243,31 +243,17 @@ class opentronsClient:
         LOGGER.debug(f"Response: {response.text}")
 
         if response.status_code == 201:
-            # convert response to dictionary
             dicResponse = json.loads(response.text)
-            # if the response failed
-            if dicResponse['data']['status'] == "failed":
-                # log the error
-                if 'error' in dicResponse['data']:
-                    error_info = dicResponse['data']['error']
-                    LOGGER.error(f"Failed to load custom labware.\nResponse error: {error_info}")
-                    # raise exception
-                    raise Exception(f"Failed to load custom labware.\nResponse error: {error_info}")
-                else:
-                    LOGGER.error(f"Failed to load custom labware.\nResponse: {dicResponse}")
-                    # raise exception
-                    raise Exception(f"Failed to load custom labware.\nResponse: {dicResponse}")
-            else:
-                # LOG - info
-                LOGGER.info(f"Custome labware {dicLabware['parameters']['loadName']} loaded in slot: {intSlot} successfully.")
-                # load the labware
-                strLabwareIdentifier_temp = self.loadLabware(intSlot = intSlot,
-                                                            strLabwareName = dicLabware['parameters']['loadName'],
-                                                            strNamespace = dicLabware['namespace'],
-                                                            intVersion = dicLabware['version'],
-                                                            strIntent = "setup"
-                                                            )
-                return strLabwareIdentifier_temp
+            LOGGER.info(f"Custom labware {dicLabware['parameters']['loadName']} definition uploaded successfully.")
+            # Now load the labware into the slot
+            strLabwareIdentifier_temp = self.loadLabware(
+                intSlot=intSlot,
+                strLabwareName=dicLabware['parameters']['loadName'],
+                strNamespace=dicLabware['namespace'],
+                intVersion=dicLabware['version'],
+                strIntent="setup"
+            )
+            return strLabwareIdentifier_temp
         else:
             raise Exception(f"Failed to load custom labware.\nError code: {response.status_code}\n Error message: {response.text}")
 

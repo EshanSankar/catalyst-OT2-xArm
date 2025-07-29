@@ -2,7 +2,7 @@
 # -*- coding: utf-8 -*-
 
 """
-Workflow Executor for OT-2 Robot
+Workflow Executor for OT2 Robot
 
 This script loads a workflow JSON file and executes each step in sequence.
 It maps operations in the workflow to function calls using the appropriate classes.
@@ -16,18 +16,23 @@ import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
-# Import OT-2 and Arduino control classes
+import rclpy
+from rclpy.node import Node
+from std_msgs.msg import String
+
+# Import OT2 and Arduino control classes
 # Create a mock opentronsClient class for testing
 class opentronsClient:
     def __init__(self, strRobotIP="100.67.89.154"):
         self.robot_ip = strRobotIP
-        print(f"Connecting to OT-2 at {strRobotIP}...")
+        print(f"Connecting to OT2 at {strRobotIP}...")
+        self.current_labware = "opentrons_96_tiprack_1000ul"
 
     def lights(self, state):
         print(f"Setting lights to {state}")
 
     def homeRobot(self):
-        print("Homing robot")
+        print("Homing OT2")
 
     def loadLabware(self, intSlot, strLabwareName):
         print(f"Loading labware {strLabwareName} in slot {intSlot}")
@@ -59,6 +64,15 @@ class opentronsClient:
     def blowout(self, strLabwareName, strWellName, strPipetteName, strOffsetStart, fltOffsetX=0, fltOffsetY=0, fltOffsetZ=0):
         print(f"Blowing out at {strLabwareName} {strWellName}")
 
+class xArmClient:
+    def __init__(self, strRobotIP="192.168.1.233"):
+        self.robot_ip = strRobotIP
+        print(f"Connecting to xArm at {strRobotIP}...")
+    def homeRobot(self):
+        print("Homing xArm")
+    def moveTo(self, joint_angles):
+        print(f"Moving xArm to joint angles: {joint_angles}")
+
 # Create a mock Arduino class for testing
 class Arduino:
     def __init__(self, arduinoPort="COM3"):
@@ -89,6 +103,14 @@ except ImportError:
     except ImportError:
         print("Using mock opentronsClient for testing")
 
+# Try to import the xArm class
+try:
+    from xarm.wrapper import xArmAPI
+    xarmClient = xArmAPI
+    print("Using real xarmClient from xarm.wrapper")
+except Exception as e:
+    print("Could not use xarmClient")
+
 # Try to import the Arduino class from ot2-arduino.py
 try:
     # Use importlib to import from a file with a hyphen in the name
@@ -113,9 +135,9 @@ logging.basicConfig(
 )
 LOGGER = logging.getLogger("WorkflowExecutor")
 
-class WorkflowExecutor:
+class WorkflowExecutor(Node):
     """
-    Class for executing OT-2 workflows defined in JSON files.
+    Class for executing OT2 workflows defined in JSON files.
 
     This class supports two execution modes:
     1. Direct execution (legacy mode)
@@ -131,9 +153,12 @@ class WorkflowExecutor:
             use_prefect (bool): Whether to use Prefect for workflow execution
             mock_mode (bool): Whether to use mock mode (no real devices)
         """
+        super().__init__("workflow_executor")
+        self.publisher = self.create_publisher(String, "orchestrator/ot2/state_transition", 10)
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
         self.ot2_client = None
+        self.xarm_client = None
         self.arduino_client = None
         self.labware_ids = {}
         self.use_prefect = use_prefect
@@ -146,7 +171,7 @@ class WorkflowExecutor:
             "drop_tip": self._execute_drop_tip,
             "move_to": self._execute_move_to,
             "wash": self._execute_wash,
-            "home": self._execute_home
+            "home": self._execute_home_ot2
         }
 
         # Initialize Prefect executor if needed
@@ -175,19 +200,27 @@ class WorkflowExecutor:
             return {}
 
     def connect_devices(self) -> bool:
-        """Connect to OT-2 and Arduino devices."""
+        """Connect to OT2, xArm, and Arduino devices."""
         success = True
 
         try:
-            # Connect to OT-2
+            # Connect to OT2
             robot_ip = self.workflow.get("global_config", {}).get("hardware", {}).get("ot2", {}).get("ip", "100.67.89.154")
-            LOGGER.info(f"Connecting to OT-2 at {robot_ip}...")
+            LOGGER.info(f"Connecting to OT2 at {robot_ip}...")
             self.ot2_client = opentronsClient(strRobotIP=robot_ip)
-            LOGGER.info("Connected to OT-2")
+            LOGGER.info("Connected to OT2")
         except Exception as e:
-            LOGGER.error(f"Failed to connect to OT-2: {str(e)}")
+            LOGGER.error(f"Failed to connect to OT2: {str(e)}")
             success = False
-
+        try:
+            # Connect to xArm
+            robot_ip = self.workflow.get("global_config", {}).get("hardware", {}).get("xarm", {}).get("ip", "192.168.1.233")
+            LOGGER.info(f"Connecting to xArm at {robot_ip}...")
+            self.xarm_client = xArmClient(strRobotIP=robot_ip)
+            LOGGER.info("Connected to xArm")
+        except Exception as e:
+            LOGGER.error(f"Failed to connect to xArm: {str(e)}")
+            success = False
         try:
             # Connect to Arduino
             LOGGER.info("Connecting to Arduino...")
@@ -201,7 +234,7 @@ class WorkflowExecutor:
         return success
 
     def setup_labware(self) -> bool:
-        """Set up labware on the OT-2 robot."""
+        """Set up labware on the OT2 robot."""
         try:
             # Load labware from global config
             labware_config = self.workflow.get("global_config", {}).get("labware", {})
@@ -263,6 +296,9 @@ class WorkflowExecutor:
                                         LOGGER.warning(f"Invalid labware ID returned. Using mock labware ID: {self.labware_ids[labware_name]}")
                                 except Exception as e:
                                     # If there's an exception, use a mock ID
+                                    import traceback
+                                    LOGGER.error(f"Exception loading custom labware: {e}")
+                                    LOGGER.error(traceback.format_exc())
                                     self.labware_ids[labware_name] = f"{labware_type}_{slot}"
                                     LOGGER.warning(f"Exception loading custom labware. Using mock labware ID: {self.labware_ids[labware_name]}")
                                     LOGGER.debug(f"Exception details: {str(e)}")
@@ -338,6 +374,7 @@ class WorkflowExecutor:
 
             # Home the robot
             self.ot2_client.homeRobot()
+            self.xarm_client.homeRobot()
 
             # Get the nodes and edges from the workflow
             nodes = self.workflow.get("nodes", [])
@@ -386,10 +423,15 @@ class WorkflowExecutor:
 
         LOGGER.info(f"Executing node: {node_id} ({node.get('label')})")
 
-        # Execute OT-2 actions
+        # Execute OT2 actions
         ot2_actions = node.get("params", {}).get("ot2_actions", [])
         for action in ot2_actions:
-            self._execute_action(action)
+            self._execute_action_ot2(action)
+        
+        # Execute xArm actions
+        xarm_actions = node.get("params", {}).get("xarm_actions", [])
+        for action in xarm_actions:
+            self._execute_action_xarm(action)
 
         # Execute Arduino control
         arduino_control = node.get("params", {}).get("arduino_control", {})
@@ -401,13 +443,13 @@ class WorkflowExecutor:
         for child_id in children:
             self._execute_node(child_id, node_map, children_map)
 
-    def _execute_action(self, action: Dict[str, Any]) -> None:
-        """Execute an OT-2 action."""
+    def _execute_action_ot2(self, action: Dict[str, Any]) -> None:
+        """Execute an OT2 action."""
         action_type = action.get("action")
         if action_type in self.operation_dispatcher:
             self.operation_dispatcher[action_type](action)
         else:
-            LOGGER.error(f"Unknown action type: {action_type}")
+            LOGGER.error(f"Unknown OT2 action type: {action_type}")
 
     def _execute_pick_up_tip(self, action: Dict[str, Any]) -> None:
         """Execute pick_up_tip action."""
@@ -428,6 +470,9 @@ class WorkflowExecutor:
 
         # Move to the tip rack
         try:
+            msg = String()
+            msg.data = f"{self.ot2_client.current_labware} A1 0 0 0, {labware} A1 0 0 0, 100"
+            self.publisher.publish(msg)
             self.ot2_client.moveToWell(
                 strLabwareName=self.labware_ids.get(labware),
                 strWellName=well,
@@ -447,6 +492,7 @@ class WorkflowExecutor:
                 fltOffsetX=offset_x,
                 fltOffsetY=offset_y
             )
+            self.ot2_client.current_labware = labware
         except Exception as e:
             LOGGER.error(f"Failed to pick up tip: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
@@ -471,6 +517,9 @@ class WorkflowExecutor:
 
         # Move to the tip rack
         try:
+            msg = String()
+            msg.data = f"{self.ot2_client.current_labware} A1 0 0 0, {labware} A1 0 0 0, 100"
+            self.publisher.publish(msg)
             self.ot2_client.moveToWell(
                 strLabwareName=self.labware_ids.get(labware),
                 strWellName=well,
@@ -492,6 +541,7 @@ class WorkflowExecutor:
                 fltOffsetY=offset_y,
                 fltOffsetZ=offset_z
             )
+            self.ot2_client.current_labware = labware
         except Exception as e:
             LOGGER.error(f"Failed to drop tip: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
@@ -516,6 +566,9 @@ class WorkflowExecutor:
 
         # Move to the well
         try:
+            msg = String()
+            msg.data = f"{self.ot2_client.current_labware} A1 0 0 0, {labware} A1 0 0 0, 100"
+            self.publisher.publish(msg)
             self.ot2_client.moveToWell(
                 strLabwareName=self.labware_ids.get(labware),
                 strWellName=well,
@@ -526,6 +579,7 @@ class WorkflowExecutor:
                 fltOffsetZ=offset_z,
                 intSpeed=100
             )
+            self.ot2_client.current_labware = labware
         except Exception as e:
             LOGGER.error(f"Failed to move to well: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
@@ -562,17 +616,46 @@ class WorkflowExecutor:
             LOGGER.warning(f"Continuing with workflow execution...")
             return
 
-    def _execute_home(self, action: Dict[str, Any]) -> None:
+    def _execute_home_ot2(self, action: Dict[str, Any]) -> None:
         """Execute home action."""
-        LOGGER.info("Homing the robot")
+        LOGGER.info("Homing the OT2")
         # action parameter is not used but kept for consistency with other methods
         try:
             self.ot2_client.homeRobot()
         except Exception as e:
-            LOGGER.error(f"Failed to home robot: {str(e)}")
+            LOGGER.error(f"Failed to home OT2: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
             return
-
+        
+    def _execute_action_xarm(self, action: Dict[str, Any]) -> None:
+        """Execute an xArm action."""
+        action_type = action.get("action")
+        if action_type in self.operation_dispatcher:
+            self.operation_dispatcher[action_type](action)
+        else:
+            LOGGER.error(f"Unknown xArm action type: {action_type}")
+        
+    def _execute_move_xarm(self, joint_angles: List[float]) -> None:
+        """Execute xArm move action."""
+        LOGGER.info(f"Moving xArm to joint angles: {joint_angles}")
+        try:
+            self.xarm_client.moveTo()
+        except Exception as e:
+            LOGGER.error(f"Failed to home xArm: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
+        
+    def _execute_home_xarm(self, action: Dict[str, Any]) -> None:
+        """Execute home action."""
+        LOGGER.info("Homing the xArm")
+        # action parameter is not used but kept for consistency with other methods
+        try:
+            self.xarm_client.homeRobot()
+        except Exception as e:
+            LOGGER.error(f"Failed to home xArm: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
+    
     def _execute_arduino_control(self, arduino_control: Dict[str, Any]) -> None:
         """Execute Arduino control actions."""
         # Check if Arduino client is available
@@ -614,6 +697,8 @@ if __name__ == "__main__":
 
     workflow_file = args.workflow_file
     print(f"Loading workflow file: {workflow_file}")
+
+    rclpy.init()
 
     try:
         # Load the workflow file to check its structure

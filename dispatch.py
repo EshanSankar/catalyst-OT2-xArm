@@ -315,7 +315,8 @@ if __name__ == "__main__":
     parser.add_argument("workflow_file", help="Path to the workflow JSON file")
     parser.add_argument("--schema", default="workflow_schema.json", help="Path to the schema JSON file")
     parser.add_argument("--mock", action="store_true", help="Run in mock mode (no real devices)")
-    parser.add_argument("--ip", type=str, help="IP address of the OT-2 robot (default: from workflow or 100.67.89.154)")
+    parser.add_argument("--ip_ot2", type=str, help="IP address of the OT-2 robot (default: from workflow or 100.67.89.154)")
+    parser.add_argument("--ip_xarm", type=str, help="IP address of the xArm robot (default: from workflow or 192.168.1.233)")
     parser.add_argument("--port", type=str, help="Serial port of the Arduino (default: COM3 on Windows, /dev/ttyUSB0 on Linux)")
     args = parser.parse_args()
 
@@ -326,8 +327,11 @@ if __name__ == "__main__":
     LOGGER.info(f"Starting workflow execution with file: {workflow_file}")
     LOGGER.info(f"Mock mode: {use_mock}")
 
-    if args.ip:
-        LOGGER.info(f"Using custom OT-2 IP: {args.ip}")
+    if args.ip_ot2:
+        LOGGER.info(f"Using custom OT-2 IP: {args.ip_ot2}")
+
+    if args.ip_xarm:
+        LOGGER.info(f"Using custom xArm IP: {args.ip_xarm}")
 
     if args.port:
         LOGGER.info(f"Using custom Arduino port: {args.port}")
@@ -420,11 +424,11 @@ if __name__ == "__main__":
                                 LOGGER.error(f"All import approaches failed: {str(e)}")
                                 raise ImportError(f"Failed to import opentronsClient: {str(e)}")
 
-                    # Create a client instance
-                    if args.ip:
-                        robot_ip = args.ip
+                    # Create an OT2 client instance
+                    if args.ip_ot2:
+                        robot_ip = args.ip_ot2
                     else:
-                        robot_ip = workflow.get("global_config", {}).get("hardware", {}).get("ot2", {}).get("ip", "100.67.89.154")
+                        robot_ip = workflow.get("global_config", {}).get("hardware", {}).get("ot2", {}).get("ip_ot2", "100.67.89.154")
                     LOGGER.info(f"Creating OT-2 client with IP: {robot_ip}")
                     ot2_client = opentronsClient(strRobotIP=robot_ip)
                     LOGGER.info(f"Successfully created OT-2 client with run ID: {ot2_client.runID}")
@@ -434,6 +438,26 @@ if __name__ == "__main__":
                     LOGGER.info("Using real OT-2 client")
                 except Exception as e:
                     LOGGER.warning(f"Failed to import and use real OT-2 client: {str(e)}")
+                
+                # Try to import the xArm class
+                try:
+                    from xarm.wrapper import XArmAPI as xArmAPI
+                    LOGGER.info("Successfully imported xArmAPI from xarm.wrapper")
+                except Exception as e:
+                    LOGGER.warning(f"Failed to import xArmAPI: {str(e)}")
+                    xArmAPI = None
+                if xArmAPI:
+                    # Create an xarmClient instance
+                    if args.ip_xarm:
+                        robot_ip = args.ip_xarm
+                    else:
+                        robot_ip = workflow.get("global_config", {}).get("hardware", {}).get("xarm", {}).get("ip_xarm", "192.168.1.233")
+                    LOGGER.info(f"Creating xArm client with IP: {robot_ip}")
+                    xarm_client = xArmAPI(robot_ip)
+                    LOGGER.info(f"Successfully created xArm client")
+                    # Replace the xarmClient in the executor
+                    executor.xarm_client = xarm_client
+                    LOGGER.info("Using real xArm client")
 
                 # Try to import the Arduino class
                 try:
