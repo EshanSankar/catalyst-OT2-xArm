@@ -83,11 +83,15 @@
           }
         ],
         "xarm_actions": [
-            {
-              "action": "move_to",
-              "joint_angles": [0, 0, 0, 0, 0, 0]
-            }
-          ]
+          {
+            "action": "set_servo_angle",
+            "angles": [0, 0, 0, 0, 0, 0],
+            "speed": 100,
+            "acc": 500,
+            "mvtime": 0,
+            "relative": true
+          }
+        ]
       }
     },
     {

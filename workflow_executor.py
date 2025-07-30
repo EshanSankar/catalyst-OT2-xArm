@@ -65,13 +65,20 @@ class opentronsClient:
         print(f"Blowing out at {strLabwareName} {strWellName}")
 
 class xArmClient:
-    def __init__(self, strRobotIP="192.168.1.233"):
-        self.robot_ip = strRobotIP
-        print(f"Connecting to xArm at {strRobotIP}...")
-    def homeRobot(self):
-        print("Homing xArm")
-    def moveTo(self, joint_angles):
-        print(f"Moving xArm to joint angles: {joint_angles}")
+    def __init__(self):
+        print(f"Creating xArm")
+    def motion_enable(self):
+        print("Enabling xArm motion")
+    def set_mode(self, mode):
+        print(f"Setting xArm mode to {mode}")
+    def set_state(self, state):
+        print(f"Setting xArm state to {state}")
+    def set_position(self, pose, speed, acc, mvtime):
+        print(f"Setting xArm position to {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
+    def set_servo_angle(self, angles, speed, acc, mvtime, relative):
+        print(f"Setting xArm servo angles to {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
+    def _call_service(self, client, request, service):
+        print(f"Calling /xarm/{service} with request {request}")
 
 # Create a mock Arduino class for testing
 class Arduino:
@@ -105,9 +112,9 @@ except ImportError:
 
 # Try to import the xArm class
 try:
-    from xarm.wrapper import xArmAPI
-    xarmClient = xArmAPI
-    print("Using real xarmClient from xarm.wrapper")
+    from xarm_wrapper import xArmClient
+    xarmClient = xArmClient
+    print("Using xarmClient from xarm_wrapper")
 except Exception as e:
     print("Could not use xarmClient")
 
@@ -165,13 +172,17 @@ class WorkflowExecutor(Node):
         self.mock_mode = mock_mode
         self.prefect_executor = None
 
-        # Initialize operation dispatcher
-        self.operation_dispatcher = {
+        # Initialize operation dispatchers
+        self.operation_dispatcher_ot2 = {
             "pick_up_tip": self._execute_pick_up_tip,
             "drop_tip": self._execute_drop_tip,
             "move_to": self._execute_move_to,
             "wash": self._execute_wash,
             "home": self._execute_home_ot2
+        }
+        self.operation_dispatcher_xarm = {
+            "set_position": self._execute_set_position_xarm,
+            "set_servo_angle": self._execute_set_servo_angle_xarm
         }
 
         # Initialize Prefect executor if needed
@@ -213,13 +224,15 @@ class WorkflowExecutor(Node):
             LOGGER.error(f"Failed to connect to OT2: {str(e)}")
             success = False
         try:
-            # Connect to xArm
-            robot_ip = self.workflow.get("global_config", {}).get("hardware", {}).get("xarm", {}).get("ip", "192.168.1.233")
-            LOGGER.info(f"Connecting to xArm at {robot_ip}...")
-            self.xarm_client = xArmClient(strRobotIP=robot_ip)
-            LOGGER.info("Connected to xArm")
+            # Enable xArm
+            LOGGER.info(f"Enabling xArm")
+            self.xarm_client = xArmClient()
+            self.xarm_client.motion_enable(on=True)
+            self.xarm_client.set_mode(mode=0)
+            self.xarm_client.set_state(state=0)
+            LOGGER.info("Enabled xArm")
         except Exception as e:
-            LOGGER.error(f"Failed to connect to xArm: {str(e)}")
+            LOGGER.error(f"Failed to enable xArm: {str(e)}")
             success = False
         try:
             # Connect to Arduino
@@ -374,7 +387,7 @@ class WorkflowExecutor(Node):
 
             # Home the robot
             self.ot2_client.homeRobot()
-            self.xarm_client.homeRobot()
+            #self.xarm_client.set_position([0, 0, 0, 0, 0, 0], speed=100, acc=500, mvtime=0)
 
             # Get the nodes and edges from the workflow
             nodes = self.workflow.get("nodes", [])
@@ -446,8 +459,8 @@ class WorkflowExecutor(Node):
     def _execute_action_ot2(self, action: Dict[str, Any]) -> None:
         """Execute an OT2 action."""
         action_type = action.get("action")
-        if action_type in self.operation_dispatcher:
-            self.operation_dispatcher[action_type](action)
+        if action_type in self.operation_dispatcher_ot2:
+            self.operation_dispatcher_ot2[action_type](action)
         else:
             LOGGER.error(f"Unknown OT2 action type: {action_type}")
 
@@ -630,29 +643,28 @@ class WorkflowExecutor(Node):
     def _execute_action_xarm(self, action: Dict[str, Any]) -> None:
         """Execute an xArm action."""
         action_type = action.get("action")
-        if action_type in self.operation_dispatcher:
-            self.operation_dispatcher[action_type](action)
+        if action_type in self.operation_dispatcher_xarm:
+            self.operation_dispatcher_xarm[action_type](action)
         else:
             LOGGER.error(f"Unknown xArm action type: {action_type}")
-        
-    def _execute_move_xarm(self, joint_angles: List[float]) -> None:
-        """Execute xArm move action."""
-        LOGGER.info(f"Moving xArm to joint angles: {joint_angles}")
+    
+    def _execute_set_position_xarm(self, pose: List[float], speed: int, acc: int, mvtime: int) -> None:
+        """Execute xArm motion_enable."""
+        LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
         try:
-            self.xarm_client.moveTo()
+            self.xarm_client.set_position()
         except Exception as e:
-            LOGGER.error(f"Failed to home xArm: {str(e)}")
+            LOGGER.error(f"Failed to set xArm position: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
             return
         
-    def _execute_home_xarm(self, action: Dict[str, Any]) -> None:
-        """Execute home action."""
-        LOGGER.info("Homing the xArm")
-        # action parameter is not used but kept for consistency with other methods
+    def _execute_set_servo_angle_xarm(self, angles: List[float], speed: int, acc: int, mvtime: int, relative: bool) -> None:
+        """Execute xArm set_servo_angle."""
+        LOGGER.info("Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
-            self.xarm_client.homeRobot()
+            self.xarm_client.set_servo_angle()
         except Exception as e:
-            LOGGER.error(f"Failed to home xArm: {str(e)}")
+            LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
             return
     

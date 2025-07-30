@@ -155,6 +155,53 @@
                     }
                   ]
                 }
+              },
+              "xarm_actions": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "required": ["action"],
+                  "properties": {
+                    "action": {
+                      "type": "string",
+                      "enum": ["set_position", "set_servo_angle"]
+                    },
+                    "pose": {
+                      "type": "array",
+                      "items": {"type": "number"},
+                      "minItems": 6,
+                      "maxItems": 6
+                    },
+                    "angles": {
+                      "type": "array",
+                      "items": {"type": "number"},
+                      "minItems": 7,
+                      "maxItems": 7
+                    },
+                    "speed": {"type": "integer"},
+                    "acc": {"type": "integer"},
+                    "mvtime": {"type": "integer"},
+                    "relative": {"type": "boolean"}
+                  },
+                  "allof": [
+                    {
+                      "if": {
+                        "properties": {"action": {"enum": ["set_position"]}}
+                      },
+                      "then": {
+                        "required": ["pose", "speed", "acc", "mvtime"]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {"action": {"enum": ["set_servo_angle"]}}
+                      },
+                      "then": {
+                        "required": ["angles", "speed", "acc", "mvtime", "relative"]
+                      }
+                    }
+                  ]
+                }
               }
             },
             "allOf": [

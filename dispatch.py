@@ -316,7 +316,6 @@ if __name__ == "__main__":
     parser.add_argument("--schema", default="workflow_schema.json", help="Path to the schema JSON file")
     parser.add_argument("--mock", action="store_true", help="Run in mock mode (no real devices)")
     parser.add_argument("--ip_ot2", type=str, help="IP address of the OT-2 robot (default: from workflow or 100.67.89.154)")
-    parser.add_argument("--ip_xarm", type=str, help="IP address of the xArm robot (default: from workflow or 192.168.1.233)")
     parser.add_argument("--port", type=str, help="Serial port of the Arduino (default: COM3 on Windows, /dev/ttyUSB0 on Linux)")
     args = parser.parse_args()
 
@@ -329,9 +328,6 @@ if __name__ == "__main__":
 
     if args.ip_ot2:
         LOGGER.info(f"Using custom OT-2 IP: {args.ip_ot2}")
-
-    if args.ip_xarm:
-        LOGGER.info(f"Using custom xArm IP: {args.ip_xarm}")
 
     if args.port:
         LOGGER.info(f"Using custom Arduino port: {args.port}")
@@ -439,25 +435,21 @@ if __name__ == "__main__":
                 except Exception as e:
                     LOGGER.warning(f"Failed to import and use real OT-2 client: {str(e)}")
                 
-                # Try to import the xArm class
+                # Try to import the xArm class from the wrapper
                 try:
-                    from xarm.wrapper import XArmAPI as xArmAPI
-                    LOGGER.info("Successfully imported xArmAPI from xarm.wrapper")
+                    from xarm_wrapper import xArmClient
+                    LOGGER.info("Successfully imported xArmClient from xarm_wrapper")
                 except Exception as e:
-                    LOGGER.warning(f"Failed to import xArmAPI: {str(e)}")
-                    xArmAPI = None
-                if xArmAPI:
+                    LOGGER.warning(f"Failed to import xArmClient: {str(e)}")
+                    xArmClient = None
+                if xArmClient:
                     # Create an xarmClient instance
-                    if args.ip_xarm:
-                        robot_ip = args.ip_xarm
-                    else:
-                        robot_ip = workflow.get("global_config", {}).get("hardware", {}).get("xarm", {}).get("ip_xarm", "192.168.1.233")
-                    LOGGER.info(f"Creating xArm client with IP: {robot_ip}")
-                    xarm_client = xArmAPI(robot_ip)
+                    LOGGER.info(f"Creating xArm client")
+                    xarm_client = xArmClient()
                     LOGGER.info(f"Successfully created xArm client")
                     # Replace the xarmClient in the executor
                     executor.xarm_client = xarm_client
-                    LOGGER.info("Using real xArm client")
+                    LOGGER.info("Using xArm client")
 
                 # Try to import the Arduino class
                 try:

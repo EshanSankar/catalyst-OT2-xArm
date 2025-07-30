@@ -17,7 +17,7 @@ from typing import Dict, Any, Optional, List, Union
 
 from hardware.OT_Arduino_Client import Arduino
 from hardware.OT2_control import OT2Control
-from hardware.xArm_control import xArmControl
+from xarm_wrapper import xArmClient
 
 # Configure logging
 LOGGER = logging.getLogger(__name__)
@@ -48,7 +48,7 @@ class BaseBackend(ABC):
         self.config = self._load_config(config_path) if config_path else {}
         self.arduino: Optional[Arduino] = None
         self.ot2_client: Optional[OT2Control] = None
-        self.xarm_client: Optional[xArmControl] = None
+        self.xarm_client: Optional[xArmClient] = None
         self.result_uploader = result_uploader
         self.experiment_type = experiment_type
         self.logger.info(f"{experiment_type} Backend initialized")
@@ -91,10 +91,8 @@ class BaseBackend(ABC):
             
             # Connect to xArm
             if not self.xarm_client:
-                robot_ip = self.config.get("xarm_ip", "192.168.1.233")
-                self.xarm_client = xArmControl(strRobotIP=robot_ip)
-                self.logger.info("Connected to xArm")
-
+                self.xarm_client = xArmClient()
+                self.logger.info("Instantiated xArm")
             return True
         except Exception as e:
             self.logger.error(f"Failed to connect to devices: {str(e)}")
@@ -124,12 +122,10 @@ class BaseBackend(ABC):
         
         if self.xarm_client:
             try:
-                self.xarm_client.disconnect()
+                self.xarm_client = None
                 self.logger.info("Disconnected from xArm")
             except Exception as e:
                 self.logger.error(f"Error disconnecting xArm: {str(e)}")
-            finally:
-                self.xarm_client = None
 
     def execute_experiment(self, uo: Dict[str, Any]) -> Dict[str, Any]:
         """
