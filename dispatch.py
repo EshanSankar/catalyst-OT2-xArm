@@ -434,22 +434,6 @@ if __name__ == "__main__":
                     LOGGER.info("Using real OT-2 client")
                 except Exception as e:
                     LOGGER.warning(f"Failed to import and use real OT-2 client: {str(e)}")
-                
-                # Try to import the xArm class from the wrapper
-                try:
-                    from xarm_wrapper import xArmClient
-                    LOGGER.info("Successfully imported xArmClient from xarm_wrapper")
-                except Exception as e:
-                    LOGGER.warning(f"Failed to import xArmClient: {str(e)}")
-                    xArmClient = None
-                if xArmClient:
-                    # Create an xarmClient instance
-                    LOGGER.info(f"Creating xArm client")
-                    xarm_client = xArmClient()
-                    LOGGER.info(f"Successfully created xArm client")
-                    # Replace the xarmClient in the executor
-                    executor.xarm_client = xarm_client
-                    LOGGER.info("Using xArm client")
 
                 # Try to import the Arduino class
                 try:

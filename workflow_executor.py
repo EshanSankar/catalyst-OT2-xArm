@@ -64,21 +64,7 @@ class opentronsClient:
     def blowout(self, strLabwareName, strWellName, strPipetteName, strOffsetStart, fltOffsetX=0, fltOffsetY=0, fltOffsetZ=0):
         print(f"Blowing out at {strLabwareName} {strWellName}")
 
-class xArmClient:
-    def __init__(self):
-        print(f"Creating xArm")
-    def motion_enable(self):
-        print("Enabling xArm motion")
-    def set_mode(self, mode):
-        print(f"Setting xArm mode to {mode}")
-    def set_state(self, state):
-        print(f"Setting xArm state to {state}")
-    def set_position(self, pose, speed, acc, mvtime):
-        print(f"Setting xArm position to {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
-    def set_servo_angle(self, angles, speed, acc, mvtime, relative):
-        print(f"Setting xArm servo angles to {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
-    def _call_service(self, client, request, service):
-        print(f"Calling /xarm/{service} with request {request}")
+# Don't need to do anything for xArm
 
 # Create a mock Arduino class for testing
 class Arduino:
@@ -110,13 +96,7 @@ except ImportError:
     except ImportError:
         print("Using mock opentronsClient for testing")
 
-# Try to import the xArm class
-try:
-    from xarm_wrapper import xArmClient
-    xarmClient = xArmClient
-    print("Using xarmClient from xarm_wrapper")
-except Exception as e:
-    print("Could not use xarmClient")
+# Don't need to import anything for xArm
 
 # Try to import the Arduino class from ot2-arduino.py
 try:
@@ -161,11 +141,11 @@ class WorkflowExecutor(Node):
             mock_mode (bool): Whether to use mock mode (no real devices)
         """
         super().__init__("workflow_executor")
-        self.publisher = self.create_publisher(String, "orchestrator/ot2/state_transition", 10)
+        self.publisher_ot2 = self.create_publisher(String, "orchestrator/ot2/state_transition", 10)
+        self.publisher_xarm = self.create_publisher(String, "orchestrator/xarm/action", 10)
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
         self.ot2_client = None
-        self.xarm_client = None
         self.arduino_client = None
         self.labware_ids = {}
         self.use_prefect = use_prefect
@@ -226,10 +206,12 @@ class WorkflowExecutor(Node):
         try:
             # Enable xArm
             LOGGER.info(f"Enabling xArm")
-            self.xarm_client = xArmClient()
-            self.xarm_client.motion_enable(on=True)
-            self.xarm_client.set_mode(mode=0)
-            self.xarm_client.set_state(state=0)
+            self.publisher_xarm.publish(String(data="motion_enable"))
+            time.sleep(3)
+            self.publisher_xarm.publish(String(data="set_mode"))
+            time.sleep(3)
+            self.publisher_xarm.publish(String(data="set_state"))
+            time.sleep(3)
             LOGGER.info("Enabled xArm")
         except Exception as e:
             LOGGER.error(f"Failed to enable xArm: {str(e)}")
@@ -387,7 +369,7 @@ class WorkflowExecutor(Node):
 
             # Home the robot
             self.ot2_client.homeRobot()
-            #self.xarm_client.set_position([0, 0, 0, 0, 0, 0], speed=100, acc=500, mvtime=0)
+            #self.publisher_xarm.publish(String(data="set_position 0 0 0 0 0 0 100 500 0)"))
 
             # Get the nodes and edges from the workflow
             nodes = self.workflow.get("nodes", [])
@@ -485,7 +467,7 @@ class WorkflowExecutor(Node):
         try:
             msg = String()
             msg.data = f"{self.ot2_client.current_labware} A1 0 0 0, {labware} A1 0 0 0, 100"
-            self.publisher.publish(msg)
+            self.publisher_ot2.publish(msg)
             self.ot2_client.moveToWell(
                 strLabwareName=self.labware_ids.get(labware),
                 strWellName=well,
@@ -532,7 +514,7 @@ class WorkflowExecutor(Node):
         try:
             msg = String()
             msg.data = f"{self.ot2_client.current_labware} A1 0 0 0, {labware} A1 0 0 0, 100"
-            self.publisher.publish(msg)
+            self.publisher_ot2.publish(msg)
             self.ot2_client.moveToWell(
                 strLabwareName=self.labware_ids.get(labware),
                 strWellName=well,
@@ -581,7 +563,7 @@ class WorkflowExecutor(Node):
         try:
             msg = String()
             msg.data = f"{self.ot2_client.current_labware} A1 0 0 0, {labware} A1 0 0 0, 100"
-            self.publisher.publish(msg)
+            self.publisher_ot2.publish(msg)
             self.ot2_client.moveToWell(
                 strLabwareName=self.labware_ids.get(labware),
                 strWellName=well,
@@ -652,7 +634,7 @@ class WorkflowExecutor(Node):
         """Execute xArm motion_enable."""
         LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
         try:
-            self.xarm_client.set_position()
+            self.publisher_xarm.publish(String(data=f"set_position {pose[0]} {pose[1]} {pose[2]} {pose[3]} {pose[4]} {pose[5]} {speed} {acc} {mvtime}"))
         except Exception as e:
             LOGGER.error(f"Failed to set xArm position: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
@@ -662,7 +644,7 @@ class WorkflowExecutor(Node):
         """Execute xArm set_servo_angle."""
         LOGGER.info("Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
-            self.xarm_client.set_servo_angle()
+            self.publisher_xarm.publish(String(data=f"set_servo_angle {angles[0]} {angles[1]} {angles[2]} {angles[3]} {angles[4]} {angles[5]} {angles[6]} {speed} {acc} {mvtime} {relative}"))
         except Exception as e:
             LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")

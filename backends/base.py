@@ -17,7 +17,6 @@ from typing import Dict, Any, Optional, List, Union
 
 from hardware.OT_Arduino_Client import Arduino
 from hardware.OT2_control import OT2Control
-from xarm_wrapper import xArmClient
 
 # Configure logging
 LOGGER = logging.getLogger(__name__)
@@ -48,7 +47,6 @@ class BaseBackend(ABC):
         self.config = self._load_config(config_path) if config_path else {}
         self.arduino: Optional[Arduino] = None
         self.ot2_client: Optional[OT2Control] = None
-        self.xarm_client: Optional[xArmClient] = None
         self.result_uploader = result_uploader
         self.experiment_type = experiment_type
         self.logger.info(f"{experiment_type} Backend initialized")
@@ -88,12 +86,7 @@ class BaseBackend(ABC):
                 robot_ip = self.config.get("ot2_ip", "100.67.89.154")
                 self.ot2_client = OT2Control(strRobotIP=robot_ip)
                 self.logger.info("Connected to OT-2")
-            
-            # Connect to xArm
-            if not self.xarm_client:
-                self.xarm_client = xArmClient()
-                self.logger.info("Instantiated xArm")
-            return True
+
         except Exception as e:
             self.logger.error(f"Failed to connect to devices: {str(e)}")
             return False
@@ -119,13 +112,6 @@ class BaseBackend(ABC):
                 self.logger.error(f"Error disconnecting OT-2: {str(e)}")
             finally:
                 self.ot2_client = None
-        
-        if self.xarm_client:
-            try:
-                self.xarm_client = None
-                self.logger.info("Disconnected from xArm")
-            except Exception as e:
-                self.logger.error(f"Error disconnecting xArm: {str(e)}")
 
     def execute_experiment(self, uo: Dict[str, Any]) -> Dict[str, Any]:
         """
@@ -155,7 +141,7 @@ class BaseBackend(ABC):
             return {"status": "error", "message": error_msg}
 
         # Connect to devices if not already connected
-        if not self.arduino or not self.ot2_client or not self.xarm_client:
+        if not self.arduino or not self.ot2_client:
             if not self.connect_devices():
                 return {"status": "error", "message": "Failed to connect to devices"}
 
