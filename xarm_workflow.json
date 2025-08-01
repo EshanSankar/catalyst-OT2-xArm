@@ -85,7 +85,7 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [0, 0, 0, 0, 0, 0],
+            "angles": [0.1, 0, 0, 0, 0, 0],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
@@ -117,15 +117,21 @@
         "ot2_actions": [
           {
             "action": "move_to",
-            "labware": "solution_rack"
-          },
-          {
-            "action": "move_to",
-            "labware": "reactor_plate",
+            "labware": "solution_rack",
             "well": "B2",
-            "offset": {
-              "z": 0
-            }
+            "offset_x": 0,
+            "offset_y": 0,
+            "offset_z": 0
+          }
+        ],
+        "xarm_actions": [
+          {
+            "action": "set_servo_angle",
+            "angles": [-0.2, 0, 0, 0, 0, 0],
+            "speed": 100,
+            "acc": 500,
+            "mvtime": 0,
+            "relative": true
           }
         ]
       }
@@ -154,14 +160,16 @@
           {
             "action": "move_to",
             "labware": "solution_rack"
-          },
+          }
+        ],
+        "xarm_actions": [
           {
-            "action": "move_to",
-            "labware": "reactor_plate",
-            "well": "B2",
-            "offset": {
-              "z": 0
-            }
+            "action": "set_servo_angle",
+            "angles": [0.2, 0, 0, 0, 0, 0],
+            "speed": 100,
+            "acc": 500,
+            "mvtime": 0,
+            "relative": true
           }
         ]
       }
@@ -187,10 +195,6 @@
           "ultrasonic0_ms": 0
         },
         "ot2_actions": [
-          {
-            "action": "move_to",
-            "labware": "solution_rack"
-          },
           {
             "action": "move_to",
             "labware": "reactor_plate",
