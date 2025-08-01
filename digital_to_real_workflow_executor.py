@@ -24,16 +24,10 @@ from sensor_msgs.msg import JointState
 # Import OT2 and Arduino control classes
 # Create a mock opentronsClient class for testing
 class opentronsClient:
-    def __init__(self, strRobotIP="100.67.89.154"):
+    def __init__(self, strRobotIP="169.254.197.90"):
         self.robot_ip = strRobotIP
         print(f"Connecting to OT2 at {strRobotIP}...")
         self.current_labware = "opentrons_96_tiprack_1000ul"
-        self.OT2_COORDS = {
-            1: (0.0, 0.0), 2: (0.13, 0.0), 3: (0.26, 0.0),
-            4: (0.0, 0.09), 5: (0.13, 0.09), 6: (0.26, 0.09),
-            7: (0.0, 0.18), 8: (0.13, 0.18), 9: (0.26, 0.18),
-            10: (0.0, 0.27), 11: (0.13, 0.27), 12: (0.26, 0.27)}
-        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder"]
 
     def lights(self, state):
         print(f"Setting lights to {state}")
@@ -149,8 +143,8 @@ class WorkflowExecutor(Node):
         """
         super().__init__("workflow_executor")
         # We don't need self.publisher_ot2 for the real thing
-        self.publisher_digital_ot2 = self.create_publisher(String, "/sim_ot2/target_joint_states", 10)
-        self.publisher_digital_xarm = self.create_publisher(String, "sim_xarm/target_joint_states", 10)
+        self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
+        self.publisher_digital_xarm = self.create_publisher(JointState, "sim_xarm/target_joint_states", 10)
         self.publisher_xarm = self.create_publisher(String, "orchestrator/xarm/action", 10)
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
@@ -160,11 +154,18 @@ class WorkflowExecutor(Node):
         self.use_prefect = use_prefect
         self.mock_mode = mock_mode
         self.prefect_executor = None
+        
 
         self.LABWARE_SLOTS = {}
 
-        self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "joint7"]
+        self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "drive_joint"]
         self.state = 1
+        self.OT2_COORDS = {
+            1: (0.0, 0.0), 2: (0.13, 0.0), 3: (0.26, 0.0),
+            4: (0.0, 0.09), 5: (0.13, 0.09), 6: (0.26, 0.09),
+            7: (0.0, 0.18), 8: (0.13, 0.18), 9: (0.26, 0.18),
+            10: (0.0, 0.27), 11: (0.13, 0.27), 12: (0.26, 0.27)}
+        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder"]
 
         # Initialize operation dispatchers
         self.operation_dispatcher_digital_ot2 = {
@@ -251,7 +252,7 @@ class WorkflowExecutor(Node):
             LOGGER.warning(f"Failed to connect to Arduino: {str(e)}")
             LOGGER.warning("Some functionality may be limited")
             # Don't set success to False here, as we can still proceed without Arduino
-
+        time.sleep(3)
         return success
 
     def setup_labware(self) -> bool:
@@ -280,6 +281,7 @@ class WorkflowExecutor(Node):
                             self.labware_ids[labware_name] = labware_id
                             LOGGER.info(f"Successfully loaded standard labware {labware_type} in slot {slot} with ID: {labware_id}")
                             self.LABWARE_SLOTS[labware_name] = slot
+                            LOGGER.info(f"Labware {labware_name} is assigned to slot {slot}")
                         else:
                             # If the labware_id is not valid, use a mock ID
                             self.labware_ids[labware_name] = f"{labware_type}_{slot}"
@@ -312,6 +314,8 @@ class WorkflowExecutor(Node):
                                     if isinstance(labware_id, str) and labware_id:
                                         self.labware_ids[labware_name] = labware_id
                                         LOGGER.info(f"Successfully loaded custom labware {labware_type} in slot {slot} with ID: {labware_id}")
+                                        self.LABWARE_SLOTS[labware_name] = slot
+                                        LOGGER.info(f"Labware {labware_name} is assigned to slot {slot}")
                                     else:
                                         # If the labware_id is not valid, use a mock ID
                                         self.labware_ids[labware_name] = f"{labware_type}_{slot}"
@@ -450,8 +454,12 @@ class WorkflowExecutor(Node):
 
         for action in ot2_actions:
             self._execute_action_digital_ot2(action)
+            self.state = 0
             while self.state != 1:
-                self.spin_once(timeout_sec=0.1)
+                rclpy.spin_once(self, timeout_sec=0.1)
+                if self.state == 1:
+                    break
+                LOGGER.info("OT2 moving...")
                 if self.state == -1:
                     LOGGER.error("OT2 UNSAFE!")
             LOGGER.info("Continuing OT2 actions...")
@@ -464,8 +472,12 @@ class WorkflowExecutor(Node):
         
         for action in xarm_actions:
             self._execute_action_digital_xarm(action)
+            self.state = 0
             while self.state != 1:
-                self.spin_once(timeout_sec=0.1)
+                rclpy.spin_once(self, timeout_sec=0.1)
+                if self.state == 1:
+                    break
+                LOGGER.info("xArm moving...")
                 if self.state == -1:
                     LOGGER.error("xArm UNSAFE!")
             LOGGER.info("Continuing xArm actions...")
@@ -615,13 +627,14 @@ class WorkflowExecutor(Node):
             return
 
         try:
+            print(f"{labware}")
             slot = self.LABWARE_SLOTS.get(labware)
             # Compute exact joint states based on labware .json and coordinate transformations
-            cell_coords = self.ot2_client.OT2_COORDS[slot]
+            cell_coords = self.OT2_COORDS[slot]
             #TODO: ADD OFFSETS FOR WELLS!
             computed_joint_states = [(cell_coords[0] + offset_x) / 150 - 0.08,
                                      (cell_coords[1] + offset_y) / 150 - 0.08]
-            msg = JointState(name=self.ot2_client.OT2_JOINTS,
+            msg = JointState(name=self.OT2_JOINTS,
                              position=[computed_joint_states[0], computed_joint_states[1]])
             self.publisher_digital_ot2.publish(msg)
         except Exception as e:
@@ -732,12 +745,18 @@ class WorkflowExecutor(Node):
     #         LOGGER.warning(f"Continuing with workflow execution...")
     #         return
     
-    def _execute_set_servo_angle_digital_xarm(self, angles: List[float], speed: int, acc: int, mvtime: int, relative: bool) -> None:
-        """Execute xArm set_servo_angle."""
-        LOGGER.info("Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
+    def _execute_set_servo_angle_digital_xarm(self, action: Dict[str, Any]) -> None:
+        """Execute xArm set_servo_angle (digital)."""
+        angles = action.get("angles", [])
+        speed = action.get("speed", 100)
+        acc = action.get("acc", 500)
+        mvtime = action.get("mvtime", 0)
+        relative = action.get("relative", True)
+        LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
-            angles.append(1.0 if relative == True else 0.0)
-            msg = JointState(name=self.XARM_JOINTS, data=(angles))
+            angles = list(angles)  # Ensure it's a list
+            angles.append(1.0 if relative else 0.0)
+            msg = JointState(name=self.XARM_JOINTS, position=angles)
             self.publisher_digital_xarm.publish(msg)
         except Exception as e:
             LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")

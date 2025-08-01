@@ -13,13 +13,13 @@ class xArmClient(Node):
         self.set_state_client = self.create_client(SetInt16ById, "/xarm/set_state")
         #self.set_position_client = self.create_client(MoveCartesian, "/xarm/set_position")
         self.set_servo_angle_client = self.create_client(MoveJoint, "/xarm/set_servo_angle")
-        self.get_logger.info("Waiting for xArm services...")
+        self.get_logger().info("Waiting for xArm services...")
         self.motion_enable_client.wait_for_service(timeout_sec=5.0)
         self.set_mode_client.wait_for_service(timeout_sec=5.0)
         self.set_state_client.wait_for_service(timeout_sec=5.0)
         #self.set_position_client.wait_for_service(timeout_sec=5.0)
         self.set_servo_angle_client.wait_for_service(timeout_sec=5.0)
-        self.get_logger.info("xArm services available")
+        self.get_logger().info("xArm services available")
     def action_callback(self, msg: String):
         action = msg.data
         if action == "motion_enable":
@@ -63,13 +63,13 @@ class xArmClient(Node):
         req.relative = relative
         return self._call_service(self.set_servo_angle_client, req, "set_position")
     def _call_service(self, client, request, service):
-        self.get_logger.info(f"Calling /xarm/{service}...")
+        self.get_logger().info(f"Calling /xarm/{service}...")
         future = client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
         if future.result() is not None:
-            self.get_logger.info(f"Successfully called /xarm/{service}")
+            self.get_logger().info(f"Successfully called /xarm/{service}")
         else:
-            self.get_logger.error(f"Failed to call /xarm/{service}: {future.exception()}")
+            self.get_logger().error(f"Failed to call /xarm/{service}: {future.exception()}")
 
 def main():
     rclpy.init()
