@@ -143,8 +143,8 @@ class WorkflowExecutor(Node):
         super().__init__("workflow_executor")
         # We don't need self.publisher_ot2 for the real thing
         self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
-        self.publisher_digital_xarm = self.create_publisher(JointState, "sim_xarm/target_joint_states", 10)
-        self.publisher_xarm = self.create_publisher(String, "orchestrator/xarm/action", 10)
+        self.publisher_digital_xarm = self.create_publisher(JointState, "/sim_xarm/target_joint_states", 10)
+        self.publisher_xarm = self.create_publisher(String, "/orchestrator/xarm/action", 10)
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
         self.ot2_client = None
@@ -230,19 +230,19 @@ class WorkflowExecutor(Node):
         except Exception as e:
             LOGGER.error(f"Failed to connect to OT2: {str(e)}")
             success = False
-        try:
-            # Enable xArm
-            LOGGER.info(f"Enabling xArm")
-            self.publisher_xarm.publish(String(data="motion_enable"))
-            time.sleep(3)
-            self.publisher_xarm.publish(String(data="set_mode"))
-            time.sleep(3)
-            self.publisher_xarm.publish(String(data="set_state"))
-            time.sleep(3)
-            LOGGER.info("Enabled xArm")
-        except Exception as e:
-            LOGGER.error(f"Failed to enable xArm: {str(e)}")
-            success = False
+        # try:
+        #     # Enable xArm
+        #     LOGGER.info(f"Enabling xArm")
+        #     self.publisher_xarm.publish(String(data="motion_enable"))
+        #     time.sleep(3)
+        #     self.publisher_xarm.publish(String(data="set_mode"))
+        #     time.sleep(3)
+        #     self.publisher_xarm.publish(String(data="set_state"))
+        #     time.sleep(3)
+        #     LOGGER.info("Enabled xArm")
+        # except Exception as e:
+        #     LOGGER.error(f"Failed to enable xArm: {str(e)}")
+        #     success = False
         try:
             # Connect to Arduino
             LOGGER.info("Connecting to Arduino...")
@@ -362,6 +362,7 @@ class WorkflowExecutor(Node):
 
     def state_cb(self, msg) -> None:
         self.state = int(msg.data)
+        print(self.state)
 
     def execute_workflow(self) -> bool:
         """
@@ -457,6 +458,7 @@ class WorkflowExecutor(Node):
 
         for action in ot2_actions:
             self._execute_action_digital_ot2(action)
+            time.sleep(0.1)
             self.state = 0
             while self.state != 1:
                 rclpy.spin_once(self, timeout_sec=0.1)
@@ -476,8 +478,10 @@ class WorkflowExecutor(Node):
         for action in xarm_actions:
             self._execute_action_digital_xarm(action)
             self.state = 0
+            print(self.state)
             while self.state != 1:
-                rclpy.spin_once(self, timeout_sec=0.1)
+                print(self.state)
+                rclpy.spin_once(self, timeout_sec=0.01)
                 if self.state == 1:
                     break
                 LOGGER.info("xArm moving...")
@@ -630,7 +634,6 @@ class WorkflowExecutor(Node):
             return
 
         try:
-            print(f"{labware}")
             slot = self.LABWARE_SLOTS.get(labware)
             # Compute exact joint states based on labware .json and coordinate transformations
             cell_coords = self.OT2_COORDS[slot]
@@ -766,9 +769,14 @@ class WorkflowExecutor(Node):
             LOGGER.warning(f"Continuing with workflow execution...")
             return
 
-    def _execute_set_servo_angle_xarm(self, angles: List[float], speed: int, acc: int, mvtime: int, relative: bool) -> None:
+    def _execute_set_servo_angle_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_servo_angle."""
-        LOGGER.info("Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
+        angles = action.get("angles", [])
+        speed = action.get("speed", 100)
+        acc = action.get("acc", 500)
+        mvtime = action.get("mvtime", 0)
+        relative = action.get("relative", True)
+        LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
             self.publisher_xarm.publish(String(data=f"set_servo_angle {angles[0]} {angles[1]} {angles[2]} {angles[3]} {angles[4]} {angles[5]} {angles[6]} {speed} {acc} {mvtime} {relative}"))
         except Exception as e:

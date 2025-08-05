@@ -7,7 +7,7 @@ from typing import List
 class xArmClient(Node):
     def __init__(self):
         super().__init__('xarm_client')
-        self.action_subscriber = self.create_subscription(String, "orchestrator/xarm/action", self.action_callback, 10)
+        self.action_subscriber = self.create_subscription(String, "/orchestrator/xarm/action", self.action_callback, 10)
         self.motion_enable_client = self.create_client(SetInt16ById, "/xarm/motion_enable")
         self.set_mode_client = self.create_client(SetInt16ById, "/xarm/set_mode")
         self.set_state_client = self.create_client(SetInt16ById, "/xarm/set_state")
@@ -33,7 +33,8 @@ class xArmClient(Node):
             self.set_position([float(x) for x in raw[1:7]], raw[7], raw[8], raw[9])
         elif action.startswith("set_servo_angle"):
             raw = action.split(" ")
-            self.set_servo_angle([float(x) for x in raw[1:8]], raw[8], raw[9], raw[10], raw[11])
+            raw[11] = True if raw[11] == "True" else False
+            self.set_servo_angle([float(x) for x in raw[1:8]], float(raw[8]), float(raw[9]), float(raw[10]), raw[11])
     def motion_enable(self, on: bool = True):
         req = SetInt16ById.Request()
         req.id = 8
@@ -54,7 +55,7 @@ class xArmClient(Node):
     #     req.acc = acc
     #     req.mvtime = mvtime
     #     return self._call_service(self.set_position_client, req, "set_position")
-    def set_servo_angle(self, angles: List[float], speed: int=100, acc: int=500, mvtime: int=0, relative: bool=True):
+    def set_servo_angle(self, angles: List[float], speed: float=100, acc: float=500, mvtime: float=0, relative: bool=True):
         req = MoveJoint.Request()
         req.angles = angles
         req.speed = speed

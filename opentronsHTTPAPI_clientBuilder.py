@@ -310,9 +310,9 @@ class opentronsClient:
             # if the response failed
             if dicResponse['data']['status'] == "failed":
                 # log the error
-                LOGGER.error(f"Failed to load pipette.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                LOGGER.error(f"Failed to load pipette.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
                 # raise exception
-                raise Exception(f"Failed to load pipette.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                raise Exception(f"Failed to load pipette.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
             else:
                 strPipetteID = dicResponse['data']['result']['pipetteId']
                 self.pipettes[strPipetteName] = {"id": strPipetteID, "mount": strMount}
@@ -571,9 +571,9 @@ class opentronsClient:
             dicResponse = json.loads(response.text)
             if dicResponse['data']['status'] == "failed":
                 # log the error
-                LOGGER.error(f"Failed to drop tip.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                LOGGER.error(f"Failed to drop tip.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
                 # raise exception
-                raise Exception(f"Failed to drop tip.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                raise Exception(f"Failed to drop tip.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
             else:
                 # LOG - info
                 LOGGER.info(f"Tip dropped into labware: {strLabwareName}, well: {strWellName}")
@@ -685,9 +685,9 @@ class opentronsClient:
             dicResponse = json.loads(response.text)
             if dicResponse['data']['status'] == "failed":
                 # log the error
-                LOGGER.error(f"Failed to aspirate.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                LOGGER.error(f"Failed to aspirate.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
                 # raise exception
-                raise Exception(f"Failed to aspirate.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                raise Exception(f"Failed to aspirate.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
             else:
                 # LOG - info
                 LOGGER.info(f"Aspiration successful.")
@@ -801,9 +801,9 @@ class opentronsClient:
             dicResponse = json.loads(response.text)
             if dicResponse['data']['status'] == "failed":
                 # log the error
-                LOGGER.error(f"Failed to dispense.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                LOGGER.error(f"Failed to dispense.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
                 # raise exception
-                raise Exception(f"Failed to dispense.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                raise Exception(f"Failed to dispense.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
             else:
                 # LOG - info
                 LOGGER.info("Dispense successful.")
@@ -905,9 +905,9 @@ class opentronsClient:
             # if the response failed
             if dicResponse['data']['status'] == "failed":
                 # log the error
-                LOGGER.error(f"Failed to blowout.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                LOGGER.error(f"Failed to blowout.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
                 # raise exception
-                raise Exception(f"Failed to blowout.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                raise Exception(f"Failed to blowout.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
             else:
                 # LOG - info
                 LOGGER.info("Blowout successful.")
@@ -1030,9 +1030,9 @@ class opentronsClient:
             # if the response failed
             if dicResponse['data']['status'] == "failed":
                 # log the error
-                LOGGER.error(f"Failed to move pipette.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                LOGGER.error(f"Failed to move pipette.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
                 # raise exception
-                raise Exception(f"Failed to move pipette.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                raise Exception(f"Failed to move pipette.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
             else:
                 # LOG - info
                 LOGGER.info("Move successful.")
@@ -1131,9 +1131,9 @@ class opentronsClient:
             # if the response failed
             if dicResponse['data']['status'] == "failed":
                 # log the error
-                LOGGER.error(f"Failed to add offsets to labware.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                LOGGER.error(f"Failed to add offsets to labware.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
                 # raise exception
-                raise Exception(f"Failed to add offsets to labware.\nResponse error code: {dicResponse.error.errorCode}\n Error type: {dicResponse.error.errorType}\n Error message: {dicResponse.error.detail}")
+                raise Exception(f"Failed to add offsets to labware.\nResponse error code: {dicResponse['data']['error']['errorCode']}\n Error type: {dicResponse['data']['error']['errorType']}\n Error message: {dicResponse['data']['error']['detail']}")
             else:
                 # LOG - info
                 LOGGER.info(f"Offsets added to labware: {strLabwareName}")

@@ -6,24 +6,24 @@
     "labware": {
       "reactor_plate": {
         "type": "nis_15_wellplate_3895ul",
-        "slot": 9,
+        "slot": 4,
         "working_well": "B2"
       },
       "wash_station": {
         "type": "nis_2_wellplate_30000ul",
-        "slot": 3
+        "slot": 5
       },
       "tip_rack": {
         "type": "opentrons_96_tiprack_1000ul",
-        "slot": 1
+        "slot": 6
       },
       "electrode_tip_rack": {
         "type": "nistall_4_tiprack_1ul",
-        "slot": 10
+        "slot": 11
       },
       "solution_rack": {
         "type": "nis_8_reservoir_25000ul",
-        "slot": 2
+        "slot": 8
       }
     },
     "instruments": {
@@ -68,7 +68,7 @@
           {
             "action": "move_to",
             "labware": "solution_rack",
-            "well": "B2",
+            "well": "A2",
             "offset_x": 0,
             "offset_y": 0,
             "offset_z": 0
@@ -118,7 +118,7 @@
           {
             "action": "move_to",
             "labware": "solution_rack",
-            "well": "B2",
+            "well": "A2",
             "offset_x": 0,
             "offset_y": 0,
             "offset_z": 0
@@ -159,7 +159,8 @@
         "ot2_actions": [
           {
             "action": "move_to",
-            "labware": "solution_rack"
+            "labware": "solution_rack",
+            "well": "A2"
           }
         ],
         "xarm_actions": [
