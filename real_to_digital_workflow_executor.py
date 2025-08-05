@@ -143,7 +143,6 @@ class WorkflowExecutor(Node):
         super().__init__("workflow_executor")
         # We don't need self.publisher_ot2 for the real thing
         self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
-        self.publisher_digital_xarm = self.create_publisher(JointState, "sim_xarm/target_joint_states", 10)
         self.publisher_xarm = self.create_publisher(String, "orchestrator/xarm/action", 10)
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
@@ -181,11 +180,6 @@ class WorkflowExecutor(Node):
             "move_to": self._execute_move_to_ot2,
             "wash": self._execute_wash_ot2,
             "home": self._execute_home_ot2
-        }
-
-        self.operation_dispatcher_digital_xarm = {
-            #"set_position": self._execute_set_position_digital_xarm,
-            "set_servo_angle": self._execute_set_servo_angle_digital_xarm
         }
         self.operation_dispatcher_xarm = {
             #"set_position": self._execute_set_position_xarm,
@@ -454,40 +448,27 @@ class WorkflowExecutor(Node):
 
         # Execute OT2 actions
         ot2_actions = node.get("params", {}).get("ot2_actions", [])
-
         for action in ot2_actions:
-            self._execute_action_digital_ot2(action)
-            self.state = 0
             while self.state != 1:
                 rclpy.spin_once(self, timeout_sec=0.1)
+                LOGGER.error("OT2 UNSAFE!")
                 if self.state == 1:
                     break
-                LOGGER.info("OT2 moving...")
-                if self.state == -1:
-                    LOGGER.error("OT2 UNSAFE!")
-            LOGGER.info("Continuing OT2 actions...")
-
-        for action in ot2_actions:
             self._execute_action_ot2(action)
+            self._execute_action_digital_ot2(action)
+            LOGGER.info("Continuing OT2 actions...")
         
         # Execute xArm actions
-        xarm_actions = node.get("params", {}).get("xarm_actions", [])
-        
+        xarm_actions = node.get("params", {}).get("xarm_actions", [])        
         for action in xarm_actions:
-            self._execute_action_digital_xarm(action)
-            self.state = 0
             while self.state != 1:
                 rclpy.spin_once(self, timeout_sec=0.1)
+                LOGGER.error("xArm UNSAFE!")
                 if self.state == 1:
                     break
-                LOGGER.info("xArm moving...")
-                if self.state == -1:
-                    LOGGER.error("xArm UNSAFE!")
-            LOGGER.info("Continuing xArm actions...")
-        
-        for action in xarm_actions:
             self._execute_action_xarm(action)
-
+        LOGGER.info("Continuing xArm actions...")
+        
         # Execute Arduino control
         arduino_control = node.get("params", {}).get("arduino_control", {})
         if arduino_control:
@@ -721,14 +702,6 @@ class WorkflowExecutor(Node):
             LOGGER.error(f"Failed to home OT2: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
             return
-        
-    def _execute_action_digital_xarm(self, action: Dict[str, Any]) -> None:
-        """Execute a digital xArm action."""
-        action_type = action.get("action")
-        if action_type in self.operation_dispatcher_digital_xarm:
-            self.operation_dispatcher_digital_xarm[action_type](action)
-        else:
-            LOGGER.error(f"Unknown digital xArm action type: {action_type}")
     
     def _execute_action_xarm(self, action: Dict[str, Any]) -> None:
         """Execute an xArm action."""
@@ -748,24 +721,6 @@ class WorkflowExecutor(Node):
     #         LOGGER.warning(f"Continuing with workflow execution...")
     #         return
     
-    def _execute_set_servo_angle_digital_xarm(self, action: Dict[str, Any]) -> None:
-        """Execute xArm set_servo_angle (digital)."""
-        angles = action.get("angles", [])
-        speed = action.get("speed", 100)
-        acc = action.get("acc", 500)
-        mvtime = action.get("mvtime", 0)
-        relative = action.get("relative", True)
-        LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
-        try:
-            angles = list(angles)  # Ensure it's a list
-            angles.append(1.0 if relative else 0.0)
-            msg = JointState(name=self.XARM_JOINTS, position=angles)
-            self.publisher_digital_xarm.publish(msg)
-        except Exception as e:
-            LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")
-            LOGGER.warning(f"Continuing with workflow execution...")
-            return
-
     def _execute_set_servo_angle_xarm(self, angles: List[float], speed: int, acc: int, mvtime: int, relative: bool) -> None:
         """Execute xArm set_servo_angle."""
         LOGGER.info("Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
