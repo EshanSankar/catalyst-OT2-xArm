@@ -175,15 +175,15 @@
                     "angles": {
                       "type": "array",
                       "items": {"type": "number"},
-                      "minItems": 7,
-                      "maxItems": 7
+                      "minItems": 6,
+                      "maxItems": 6
                     },
                     "speed": {"type": "integer"},
                     "acc": {"type": "integer"},
                     "mvtime": {"type": "integer"},
                     "relative": {"type": "boolean"},
-                    "labware": {"type": "string"},
-                    "pos": {"type": "number"}
+                    "pos": {"type": "number"},
+                    "labware": {"type": "string"}
                   },
                   "allof": [
                     {
@@ -191,7 +191,7 @@
                         "properties": {"action": {"enum": ["set_position"]}}
                       },
                       "then": {
-                        "required": ["pose", "speed", "acc", "mvtime", "labware"]
+                        "required": ["pose", "speed", "acc", "mvtime"]
                       }
                     },
                     {
@@ -199,7 +199,7 @@
                         "properties": {"action": {"enum": ["set_servo_angle"]}}
                       },
                       "then": {
-                        "required": ["angles", "speed", "acc", "mvtime", "relative", "labware"]
+                        "required": ["angles", "speed", "acc", "mvtime", "relative"]
                       }
                     },
                     {
@@ -207,7 +207,7 @@
                         "properties": {"action": {"enum": ["set_gripper_position"]}}
                       },
                       "then": {
-                        "required": ["pos"]
+                        "required": ["pos", "labware"]
                       }
                     }
                   ]

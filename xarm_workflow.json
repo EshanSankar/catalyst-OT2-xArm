@@ -85,12 +85,11 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [0.1, 0, 0, 0, 0, 0, 0],
+            "angles": [0.1, 0, 0, 0, 0, 0],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
-            "relative": true,
-            "labware": "solution_rack"
+            "relative": true
           }
         ]
       }
@@ -128,12 +127,11 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [-0.2, 0, 0, 0, 0, 0, 0],
+            "angles": [-0.2, 0, 0, 0, 0, 0],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
-            "relative": true,
-            "labware": "reactor_plate"
+            "relative": true
           }
         ]
       }
@@ -168,12 +166,11 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [0.2, 0, 0, 0, 0, 0, 0],
+            "angles": [0.2, 0, 0, 0, 0, 0],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
-            "relative": true,
-            "labware": "solution_rack"
+            "relative": true
           }
         ]
       }

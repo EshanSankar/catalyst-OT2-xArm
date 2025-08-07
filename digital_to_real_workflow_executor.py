@@ -144,7 +144,6 @@ class WorkflowExecutor(Node):
         # We don't need self.publisher_ot2 for the real thing
         self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
         self.publisher_digital_xarm = self.create_publisher(JointState, "/sim_xarm/target_joint_states", 10)
-        self.publisher_digital_xarm_gripper = self.create_publisher(JointState, "/sim_xarm/target_gripper_position", 10)
         self.publisher_xarm = self.create_publisher(String, "/orchestrator/xarm/action", 10)
         self.publisher_target_asset_ot2 = self.create_publisher(String, "/sim_ot2/target_asset")
         self.publisher_target_asset_xarm = self.create_publisher(String, "/sim_xarm/target_asset")
@@ -157,11 +156,12 @@ class WorkflowExecutor(Node):
         self.mock_mode = mock_mode
         self.prefect_executor = None
         
-
         self.LABWARE_SLOTS = {}
+        self.LABWARE_TYPES = {}
 
-        self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "drive_joint"]
-        self.XARM_GRIPPER = ["gripper"] #TODO: find the correct name in Isaac Sim
+        self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
+        self.XARM_GRIPPER = ["left_finger", "right_finger"]
+        self.prev_gripper_position = 500
         self.state = 1
         self.state_sub = self.create_subscription(Int8, "safety_checker/status_int", self.state_cb, 10)
         self.OT2_COORDS = {
@@ -169,7 +169,7 @@ class WorkflowExecutor(Node):
             4: (0.0, 0.09), 5: (0.13, 0.09), 6: (0.26, 0.09),
             7: (0.0, 0.18), 8: (0.13, 0.18), 9: (0.26, 0.18),
             10: (0.0, 0.27), 11: (0.13, 0.27), 12: (0.26, 0.27)}
-        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder", "PrismaticJointLeftPipette"]
+        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder", "PrismaticJointRightPipette"]
 
         # Initialize operation dispatchers
         self.operation_dispatcher_digital_ot2 = {
@@ -285,6 +285,7 @@ class WorkflowExecutor(Node):
                             self.labware_ids[labware_name] = labware_id
                             LOGGER.info(f"Successfully loaded standard labware {labware_type} in slot {slot} with ID: {labware_id}")
                             self.LABWARE_SLOTS[labware_name] = slot
+                            self.LABWARE_TYPES[labware_name] = labware_type
                             LOGGER.info(f"Labware {labware_name} is assigned to slot {slot}")
                         else:
                             # If the labware_id is not valid, use a mock ID
@@ -319,6 +320,7 @@ class WorkflowExecutor(Node):
                                         self.labware_ids[labware_name] = labware_id
                                         LOGGER.info(f"Successfully loaded custom labware {labware_type} in slot {slot} with ID: {labware_id}")
                                         self.LABWARE_SLOTS[labware_name] = slot
+                                        self.LABWARE_TYPES[labware_name] = labware_type
                                         LOGGER.info(f"Labware {labware_name} is assigned to slot {slot}")
                                     else:
                                         # If the labware_id is not valid, use a mock ID
@@ -639,12 +641,17 @@ class WorkflowExecutor(Node):
 
         try:
             slot = self.LABWARE_SLOTS.get(labware)
+            labware_type = self.LABWARE_TYPES.get(labware)
             # Compute exact joint states based on labware .json and coordinate transformations
             cell_coords = self.OT2_COORDS[slot]
-            #TODO: ADD OFFSETS FOR WELLS!
-            computed_joint_states = [(cell_coords[0] + offset_x) / 150 - 0.08,
-                                     (cell_coords[1] + offset_y) / 150 - 0.08,
-                                     offset_z / 150 - 0.08]
+            well_x, well_y, well_z = 0.0, 0.0, 0.0
+            with open(f"labware/{labware_type}.json", "r") as f:
+                lw = json.load(f)
+                for coord, _ in lw["wells"][well]:
+                    well_x, well_y, well_z = coord["x"], coord["y"], coord["z"] # TODO: need to fix well_z?
+            computed_joint_states = [(cell_coords[0] + offset_x + well_x) / 150 - 0.08,
+                                     (cell_coords[1] + offset_y + well_y) / 150 - 0.08,
+                                     ((offset_z + well_z)/ 150 - 0.08) * -1]
             msg = JointState(name=self.OT2_JOINTS,
                              position=[computed_joint_states[0], computed_joint_states[1], computed_joint_states[2]])
             self.publisher_target_asset_ot2.publish(String(data=labware))
@@ -753,8 +760,7 @@ class WorkflowExecutor(Node):
         speed = action.get("speed", 100)
         acc = action.get("acc", 500)
         mvtime = action.get("mvtime", 0)
-        labware = action.get("labware", "")
-        LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}, to labware {labware}")
+        LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
         try:
             self.publisher_xarm.publish(String(data=f"set_position {pose[0]} {pose[1]} {pose[2]} {pose[3]} {pose[4]} {pose[5]} {speed} {acc} {mvtime}"))
         except Exception as e:
@@ -769,8 +775,7 @@ class WorkflowExecutor(Node):
         acc = action.get("acc", 500)
         mvtime = action.get("mvtime", 0)
         relative = action.get("relative", True)
-        labware = action.get("labware", "")
-        LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}, to labware {labware}")
+        LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
             angles.append(1.0 if relative else 0.0)
             msg = JointState(name=self.XARM_JOINTS, position=angles)
@@ -797,13 +802,17 @@ class WorkflowExecutor(Node):
         
     def _execute_set_gripper_position_digital_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_gripper_position (digital)."""
-        pos = action.get("pos", 500)
+        pos = action.get("pos", 500)/1000 # Isaac Sim joint_dof limit
         labware = action.get("labware", "")
-        LOGGER.info(f"Setting xArm gripper position: {pos} to labware {labware}")
         try:
-            msg = JointState(name=self.XARM_GRIPPER, position=[pos])
-            self.publisher_target_asset_xarm.publish(String(data=labware))
-            self.publisher_digital_xarm_gripper.publish(msg)
+            msg = JointState(name=self.XARM_GRIPPER, position=[pos, pos])
+            if pos > self.prev_gripper_position: # if the gripper is opening
+                LOGGER.info(f"Setting xArm gripper position: {pos} to release labware {labware}")
+                self.publisher_target_asset_xarm.publish(String(data=""))
+            else: # if the gripper is closing
+                LOGGER.info(f"Setting xArm gripper position: {pos} to grip labware {labware}")
+                self.publisher_target_asset_xarm.publish(String(data=f"{labware}"))
+            self.publisher_digital_xarm.publish(msg)
         except Exception as e:
             LOGGER.error(f"Failed to set xArm gripper position: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
@@ -812,8 +821,7 @@ class WorkflowExecutor(Node):
     def _execute_set_gripper_position_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_gripper_position (digital)."""
         pos = action.get("pos", 500)
-        labware = action.get("labware", "")
-        LOGGER.info(f"Setting xArm gripper position: {pos} to labware {labware}")
+        LOGGER.info(f"Setting xArm gripper position: {pos}")
         try:
             self.publisher_xarm.publish(String(data=f"set_gripper_position {pos}"))
         except Exception as e:
