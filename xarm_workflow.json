@@ -89,7 +89,8 @@
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
-            "relative": true
+            "relative": true,
+            "labware": "solution_rack"
           }
         ]
       }
@@ -131,7 +132,8 @@
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
-            "relative": true
+            "relative": true,
+            "labware": "reactor_plate"
           }
         ]
       }
@@ -170,7 +172,8 @@
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
-            "relative": true
+            "relative": true,
+            "labware": "solution_rack"
           }
         ]
       }

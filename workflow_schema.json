@@ -164,7 +164,7 @@
                   "properties": {
                     "action": {
                       "type": "string",
-                      "enum": ["set_position", "set_servo_angle"]
+                      "enum": ["set_position", "set_servo_angle", "set_gripper_position"]
                     },
                     "pose": {
                       "type": "array",
@@ -181,7 +181,9 @@
                     "speed": {"type": "integer"},
                     "acc": {"type": "integer"},
                     "mvtime": {"type": "integer"},
-                    "relative": {"type": "boolean"}
+                    "relative": {"type": "boolean"},
+                    "labware": {"type": "string"},
+                    "pos": {"type": "number"}
                   },
                   "allof": [
                     {
@@ -189,7 +191,7 @@
                         "properties": {"action": {"enum": ["set_position"]}}
                       },
                       "then": {
-                        "required": ["pose", "speed", "acc", "mvtime"]
+                        "required": ["pose", "speed", "acc", "mvtime", "labware"]
                       }
                     },
                     {
@@ -197,7 +199,15 @@
                         "properties": {"action": {"enum": ["set_servo_angle"]}}
                       },
                       "then": {
-                        "required": ["angles", "speed", "acc", "mvtime", "relative"]
+                        "required": ["angles", "speed", "acc", "mvtime", "relative", "labware"]
+                      }
+                    },
+                    {
+                      "if": {
+                        "properties": {"action": {"enum": ["set_gripper_position"]}}
+                      },
+                      "then": {
+                        "required": ["pos"]
                       }
                     }
                   ]

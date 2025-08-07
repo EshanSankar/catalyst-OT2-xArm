@@ -144,7 +144,10 @@ class WorkflowExecutor(Node):
         # We don't need self.publisher_ot2 for the real thing
         self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
         self.publisher_digital_xarm = self.create_publisher(JointState, "/sim_xarm/target_joint_states", 10)
+        self.publisher_digital_xarm_gripper = self.create_publisher(JointState, "/sim_xarm/target_gripper_position", 10)
         self.publisher_xarm = self.create_publisher(String, "/orchestrator/xarm/action", 10)
+        self.publisher_target_asset_ot2 = self.create_publisher(String, "/sim_ot2/target_asset")
+        self.publisher_target_asset_xarm = self.create_publisher(String, "/sim_xarm/target_asset")
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
         self.ot2_client = None
@@ -158,6 +161,7 @@ class WorkflowExecutor(Node):
         self.LABWARE_SLOTS = {}
 
         self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6", "drive_joint"]
+        self.XARM_GRIPPER = ["gripper"] #TODO: find the correct name in Isaac Sim
         self.state = 1
         self.state_sub = self.create_subscription(Int8, "safety_checker/status_int", self.state_cb, 10)
         self.OT2_COORDS = {
@@ -165,7 +169,7 @@ class WorkflowExecutor(Node):
             4: (0.0, 0.09), 5: (0.13, 0.09), 6: (0.26, 0.09),
             7: (0.0, 0.18), 8: (0.13, 0.18), 9: (0.26, 0.18),
             10: (0.0, 0.27), 11: (0.13, 0.27), 12: (0.26, 0.27)}
-        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder"]
+        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder", "PrismaticJointLeftPipette"]
 
         # Initialize operation dispatchers
         self.operation_dispatcher_digital_ot2 = {
@@ -404,7 +408,7 @@ class WorkflowExecutor(Node):
 
             # Home the robot
             self.ot2_client.homeRobot()
-            #self.publisher_xarm.publish(String(data="set_position 0 0 0 0 0 0 100 500 0)"))
+            #self.publisher_xarm.publish(String(data="set_servo_angle 2.865 -0.0861 -0.4979 4.3559 1.318 1.021 0 100 500 0 False"))
 
             # Get the nodes and edges from the workflow
             nodes = self.workflow.get("nodes", [])
@@ -639,9 +643,11 @@ class WorkflowExecutor(Node):
             cell_coords = self.OT2_COORDS[slot]
             #TODO: ADD OFFSETS FOR WELLS!
             computed_joint_states = [(cell_coords[0] + offset_x) / 150 - 0.08,
-                                     (cell_coords[1] + offset_y) / 150 - 0.08]
+                                     (cell_coords[1] + offset_y) / 150 - 0.08,
+                                     offset_z / 150 - 0.08]
             msg = JointState(name=self.OT2_JOINTS,
-                             position=[computed_joint_states[0], computed_joint_states[1]])
+                             position=[computed_joint_states[0], computed_joint_states[1], computed_joint_states[2]])
+            self.publisher_target_asset_ot2.publish(String(data=labware))
             self.publisher_digital_ot2.publish(msg)
         except Exception as e:
             LOGGER.error(f"Failed to move to well: {str(e)}")
@@ -741,15 +747,20 @@ class WorkflowExecutor(Node):
         else:
             LOGGER.error(f"Unknown xArm action type: {action_type}")
     
-    # def _execute_set_position_xarm(self, pose: List[float], speed: int, acc: int, mvtime: int) -> None:
-    #     """Execute xArm motion_enable."""
-    #     LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
-    #     try:
-    #         self.publisher_xarm.publish(String(data=f"set_position {pose[0]} {pose[1]} {pose[2]} {pose[3]} {pose[4]} {pose[5]} {speed} {acc} {mvtime}"))
-    #     except Exception as e:
-    #         LOGGER.error(f"Failed to set xArm position: {str(e)}")
-    #         LOGGER.warning(f"Continuing with workflow execution...")
-    #         return
+    def _execute_set_position_xarm(self, action: Dict[str, Any]) -> None:
+        """Execute xArm motion_enable."""
+        pose = action.get("pose", [])
+        speed = action.get("speed", 100)
+        acc = action.get("acc", 500)
+        mvtime = action.get("mvtime", 0)
+        labware = action.get("labware", "")
+        LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}, to labware {labware}")
+        try:
+            self.publisher_xarm.publish(String(data=f"set_position {pose[0]} {pose[1]} {pose[2]} {pose[3]} {pose[4]} {pose[5]} {speed} {acc} {mvtime}"))
+        except Exception as e:
+            LOGGER.error(f"Failed to set xArm position: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
     
     def _execute_set_servo_angle_digital_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_servo_angle (digital)."""
@@ -758,9 +769,9 @@ class WorkflowExecutor(Node):
         acc = action.get("acc", 500)
         mvtime = action.get("mvtime", 0)
         relative = action.get("relative", True)
-        LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
+        labware = action.get("labware", "")
+        LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}, to labware {labware}")
         try:
-            angles = list(angles)  # Ensure it's a list
             angles.append(1.0 if relative else 0.0)
             msg = JointState(name=self.XARM_JOINTS, position=angles)
             self.publisher_digital_xarm.publish(msg)
@@ -781,6 +792,32 @@ class WorkflowExecutor(Node):
             self.publisher_xarm.publish(String(data=f"set_servo_angle {angles[0]} {angles[1]} {angles[2]} {angles[3]} {angles[4]} {angles[5]} {angles[6]} {speed} {acc} {mvtime} {relative}"))
         except Exception as e:
             LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
+        
+    def _execute_set_gripper_position_digital_xarm(self, action: Dict[str, Any]) -> None:
+        """Execute xArm set_gripper_position (digital)."""
+        pos = action.get("pos", 500)
+        labware = action.get("labware", "")
+        LOGGER.info(f"Setting xArm gripper position: {pos} to labware {labware}")
+        try:
+            msg = JointState(name=self.XARM_GRIPPER, position=[pos])
+            self.publisher_target_asset_xarm.publish(String(data=labware))
+            self.publisher_digital_xarm_gripper.publish(msg)
+        except Exception as e:
+            LOGGER.error(f"Failed to set xArm gripper position: {str(e)}")
+            LOGGER.warning(f"Continuing with workflow execution...")
+            return
+
+    def _execute_set_gripper_position_xarm(self, action: Dict[str, Any]) -> None:
+        """Execute xArm set_gripper_position (digital)."""
+        pos = action.get("pos", 500)
+        labware = action.get("labware", "")
+        LOGGER.info(f"Setting xArm gripper position: {pos} to labware {labware}")
+        try:
+            self.publisher_xarm.publish(String(data=f"set_gripper_position {pos}"))
+        except Exception as e:
+            LOGGER.error(f"Failed to set xArm gripper position: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
             return
     

@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String
-from xarm_msgs.srv import SetInt16ById, SetInt16, MoveJoint#, MoveCartesian
+from xarm_msgs.srv import SetInt16ById, SetInt16, MoveCartesian, MoveJoint, GripperMove
 from typing import List
 
 class xArmClient(Node):
@@ -11,14 +11,16 @@ class xArmClient(Node):
         self.motion_enable_client = self.create_client(SetInt16ById, "/xarm/motion_enable")
         self.set_mode_client = self.create_client(SetInt16ById, "/xarm/set_mode")
         self.set_state_client = self.create_client(SetInt16ById, "/xarm/set_state")
-        #self.set_position_client = self.create_client(MoveCartesian, "/xarm/set_position")
+        self.set_position_client = self.create_client(MoveCartesian, "/xarm/set_position")
         self.set_servo_angle_client = self.create_client(MoveJoint, "/xarm/set_servo_angle")
+        self.set_gripper_position_client = self.create_client(GripperMove, "/xarm/set_gripper_position")
         self.get_logger().info("Waiting for xArm services...")
         self.motion_enable_client.wait_for_service(timeout_sec=5.0)
         self.set_mode_client.wait_for_service(timeout_sec=5.0)
         self.set_state_client.wait_for_service(timeout_sec=5.0)
-        #self.set_position_client.wait_for_service(timeout_sec=5.0)
+        self.set_position_client.wait_for_service(timeout_sec=5.0)
         self.set_servo_angle_client.wait_for_service(timeout_sec=5.0)
+        self.set_gripper_position_client.wait_for_service(timeout_sec=5.0)
         self.get_logger().info("xArm services available")
     def action_callback(self, msg: String):
         action = msg.data
@@ -48,13 +50,13 @@ class xArmClient(Node):
         req = SetInt16.Request()
         req.data = state
         return self._call_service(self.set_state_client, req, "set_state")
-    # def set_position(self, pose: List[float], speed: int=100, acc: int=500, mvtime: int=0):
-    #     req = MoveCartesian.Request()
-    #     req.pose = pose
-    #     req.speed = speed
-    #     req.acc = acc
-    #     req.mvtime = mvtime
-    #     return self._call_service(self.set_position_client, req, "set_position")
+    def set_position(self, pose: List[float], speed: int=100, acc: int=500, mvtime: int=0):
+        req = MoveCartesian.Request()
+        req.pose = pose
+        req.speed = speed
+        req.acc = acc
+        req.mvtime = mvtime
+        return self._call_service(self.set_position_client, req, "set_position")
     def set_servo_angle(self, angles: List[float], speed: float=100, acc: float=500, mvtime: float=0, relative: bool=True):
         req = MoveJoint.Request()
         req.angles = angles
@@ -63,6 +65,10 @@ class xArmClient(Node):
         req.mvtime = mvtime
         req.relative = relative
         return self._call_service(self.set_servo_angle_client, req, "set_position")
+    def set_gripper_position(self, pos: float):
+        req = GripperMove.Request()
+        req.pos = pos
+        return self._call_service(self.set_gripper_position_client, req, "set_gripper_position")
     def _call_service(self, client, request, service):
         self.get_logger().info(f"Calling /xarm/{service}...")
         future = client.call_async(request)
