@@ -162,7 +162,8 @@ class WorkflowExecutor(Node):
         self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
         self.XARM_GRIPPER = ["left_finger", "right_finger"]
         self.prev_gripper_position = 500
-        self.state = 1
+        self.state, self.state_resolution = 1, 0
+        # 1 = continue with next action; 0 = continue with current action, -1 = don't continue
         self.state_sub = self.create_subscription(Int8, "safety_checker/status_int", self.state_cb, 10)
         self.OT2_COORDS = {
             1: (0.0, 0.0), 2: (0.13, 0.0), 3: (0.26, 0.0),
@@ -461,42 +462,52 @@ class WorkflowExecutor(Node):
 
         # Execute OT2 actions
         ot2_actions = node.get("params", {}).get("ot2_actions", [])
-
         for action in ot2_actions:
+            if node_id == "0":
+                self._execute_action_ot2(action)
+                continue
             self._execute_action_digital_ot2(action)
             time.sleep(0.1)
             self.state = 0
             while self.state != 1:
                 rclpy.spin_once(self, timeout_sec=0.1)
                 if self.state == 1:
+                    self.state_resolution = 1
                     break
-                LOGGER.info("OT2 moving...")
-                if self.state == -1:
-                    LOGGER.error("OT2 UNSAFE!")
-            LOGGER.info("Continuing OT2 actions...")
-
-        for action in ot2_actions:
-            self._execute_action_ot2(action)
+                elif self.state == -1:
+                    LOGGER.error("Digital OT2 UNSAFE!")
+                else:
+                    LOGGER.info("Digital OT2 moving...")
+            if self.state_resolution == 1:
+                LOGGER.info("Intervened, continuing next OT2 action...")
+                self.state_resolution = 0
+                continue
+            LOGGER.info("Continuing current OT2 action...")
+            self._execute_action_ot2(action)            
         
         # Execute xArm actions
         xarm_actions = node.get("params", {}).get("xarm_actions", [])
-        
         for action in xarm_actions:
+            if node_id == "0":
+                self._execute_action_xarm(action)
+                continue
             self._execute_action_digital_xarm(action)
             self.state = 0
-            print(self.state)
             while self.state != 1:
-                print(self.state)
                 rclpy.spin_once(self, timeout_sec=0.01)
                 if self.state == 1:
+                    self.state_resolution = 1
                     break
-                LOGGER.info("xArm moving...")
-                if self.state == -1:
-                    LOGGER.error("xArm UNSAFE!")
-            LOGGER.info("Continuing xArm actions...")
-        
-        for action in xarm_actions:
-            self._execute_action_xarm(action)
+                elif self.state == -1:
+                    LOGGER.error("Digital xArm UNSAFE!")
+                else:
+                    LOGGER.info("Digital xArm moving...")
+            if self.state_resolution == 1:
+                LOGGER.info("Intervened, continuing next xArm action...")
+                self.state_resolution = 0
+                continue
+            LOGGER.info("Continuing current xArm action...")
+            self._execute_action_xarm(action)            
 
         # Execute Arduino control
         arduino_control = node.get("params", {}).get("arduino_control", {})
