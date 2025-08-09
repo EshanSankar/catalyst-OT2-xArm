@@ -5,7 +5,7 @@
   "global_config": {
     "labware": {
       "vial_rack": {
-        "type": "8_vialrack",
+        "type": "sdl1_8_wellplate_10ul",
         "slot": 7
       },
       "tip_rack": {
@@ -13,8 +13,8 @@
         "slot": 1
       },
       "reactor": {
-        "type": "24_reactor",
-        "slot": 6
+        "type": "sdl1_24_wellplate_2664ul",
+        "slot": 9
       }
     },
     "instruments": {
@@ -55,17 +55,10 @@
           "pump0_ml": 0.0,
           "ultrasonic0_ms": 0
         },
-        "ot2_actions": [
-          {
-            "action": "pick_up_tip",
-            "labware": "tip_rack",
-            "well": "A1"
-          }
-        ],
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [0.1, 0, 0, 0, 0, 0],
+            "angles": [-3.248, -0.356, -0.4479, -0.0728, 0.73, -6.248],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
@@ -102,7 +95,7 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [-0.2, 0, 0, 0, 0, 0],
+            "angles": [-3.3418, 0.3917, -0.7875, -1.7118, 1.49, -5.1737],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
@@ -110,12 +103,20 @@
           },
           {
             "action": "set_gripper_position",
-            "pos": 300,
+            "pos": 120,
             "labware": "vial_rack_lid"
           },
           {
             "action": "set_servo_angle",
-            "angles": [0, 0, 0, 0, 0, 0],
+            "angles": [-3.331, 0.2526, -0.7642, -1.6922, 1.49, -5.22],
+            "speed": 100,
+            "acc": 500,
+            "mvtime": 0,
+            "relative": false
+          },
+          {
+            "action": "set_servo_angle",
+            "angles": [-3.0112, 0.7404, -1.1663, -1.4415, 1.6218, -5.137156],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
@@ -123,8 +124,16 @@
           },
           {
             "action": "set_gripper_position",
-            "pos": 500,
+            "pos": 600,
             "labware": "vial_rack_lid"
+          },
+          {
+            "action": "set_servo_angle",
+            "angles": [-2.89533, 0.7404, -1.1663, -1.4415, 1.6218, -5.137156],
+            "speed": 100,
+            "acc": 500,
+            "mvtime": 0,
+            "relative": false
           }
         ]
       }
@@ -186,7 +195,7 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [0, 0, 0, 0, 0, 0],
+            "angles": [-3.4113, 0.50624, -0.7824, -1.94, 1.455, -3.3892],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
@@ -194,21 +203,16 @@
           },
           {
             "action": "set_gripper_position",
-            "pos": 200,
+            "pos": 120,
             "labware": "vial_1"
           },
           {
             "action": "set_servo_angle",
-            "angles": [0, 0, 0, 0, 0, 0],
+            "angles": [-3.3861, 0.364798, -0.908, -1.7125, 1.45495, -3.70769],
             "speed": 100,
             "acc": 500,
             "mvtime": 0,
             "relative": false
-          },
-          {
-            "action": "set_gripper_position",
-            "pos": 500,
-            "labware": "vial_1"
           }
         ]
       }

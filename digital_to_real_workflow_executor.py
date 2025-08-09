@@ -479,7 +479,7 @@ class WorkflowExecutor(Node):
                 else:
                     LOGGER.info("Digital OT2 moving...")
             if self.state_resolution == 1:
-                LOGGER.info("Intervened, continuing next OT2 action...")
+                LOGGER.info("Continuing next OT2 action...")
                 self.state_resolution = 0
                 continue
             LOGGER.info("Continuing current OT2 action...")
@@ -503,7 +503,7 @@ class WorkflowExecutor(Node):
                 else:
                     LOGGER.info("Digital xArm moving...")
             if self.state_resolution == 1:
-                LOGGER.info("Intervened, continuing next xArm action...")
+                LOGGER.info("Continuing next xArm action...")
                 self.state_resolution = 0
                 continue
             LOGGER.info("Continuing current xArm action...")
