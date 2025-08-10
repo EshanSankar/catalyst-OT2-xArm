@@ -145,8 +145,8 @@ class WorkflowExecutor(Node):
         self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
         self.publisher_digital_xarm = self.create_publisher(JointState, "/sim_xarm/target_joint_states", 10)
         self.publisher_xarm = self.create_publisher(String, "/orchestrator/xarm/action", 10)
-        self.publisher_target_asset_ot2 = self.create_publisher(String, "/sim_ot2/target_asset")
-        self.publisher_target_asset_xarm = self.create_publisher(String, "/sim_xarm/target_asset")
+        self.publisher_target_asset_ot2 = self.create_publisher(String, "/sim_ot2/target_asset", 10)
+        self.publisher_target_asset_xarm = self.create_publisher(String, "/sim_xarm/target_asset", 10)
         self.workflow_file = workflow_file
         self.workflow = self._load_workflow(workflow_file)
         self.ot2_client = None
@@ -190,11 +190,13 @@ class WorkflowExecutor(Node):
 
         self.operation_dispatcher_digital_xarm = {
             #"set_position": self._execute_set_position_digital_xarm,
-            "set_servo_angle": self._execute_set_servo_angle_digital_xarm
+            "set_servo_angle": self._execute_set_servo_angle_digital_xarm,
+            "set_gripper_position": self._execute_set_gripper_position_digital_xarm
         }
         self.operation_dispatcher_xarm = {
             #"set_position": self._execute_set_position_xarm,
-            "set_servo_angle": self._execute_set_servo_angle_xarm
+            "set_servo_angle": self._execute_set_servo_angle_xarm,
+            "set_gripper_position": self._execute_set_gripper_position_xarm
         }
 
         # Initialize Prefect executor if needed
@@ -411,7 +413,8 @@ class WorkflowExecutor(Node):
 
             # Home the robot
             self.ot2_client.homeRobot()
-            #self.publisher_xarm.publish(String(data="set_servo_angle 2.865 -0.0861 -0.4979 4.3559 1.318 1.021 0 100 500 0 False"))
+            self.publisher_xarm.publish(String(data="set_servo_angle 2.865 -0.0861 -0.4979 4.3559 1.318 1.021 0 100 500 0 False"))
+            time.sleep(10)
 
             # Get the nodes and edges from the workflow
             nodes = self.workflow.get("nodes", [])
@@ -476,6 +479,7 @@ class WorkflowExecutor(Node):
                     break
                 elif self.state == -1:
                     LOGGER.error("Digital OT2 UNSAFE!")
+                    self.publisher_xarm.publish(String(data="get_gripper_position"))
                 else:
                     LOGGER.info("Digital OT2 moving...")
             if self.state_resolution == 1:
@@ -500,6 +504,7 @@ class WorkflowExecutor(Node):
                     break
                 elif self.state == -1:
                     LOGGER.error("Digital xArm UNSAFE!")
+                    self.publisher_xarm.publish(String(data="get_gripper_position"))
                 else:
                     LOGGER.info("Digital xArm moving...")
             if self.state_resolution == 1:
@@ -507,7 +512,8 @@ class WorkflowExecutor(Node):
                 self.state_resolution = 0
                 continue
             LOGGER.info("Continuing current xArm action...")
-            self._execute_action_xarm(action)            
+            self._execute_action_xarm(action)
+            time.sleep(5)            
 
         # Execute Arduino control
         arduino_control = node.get("params", {}).get("arduino_control", {})
@@ -658,8 +664,8 @@ class WorkflowExecutor(Node):
             well_x, well_y, well_z = 0.0, 0.0, 0.0
             with open(f"labware/{labware_type}.json", "r") as f:
                 lw = json.load(f)
-                for coord, _ in lw["wells"][well]:
-                    well_x, well_y, well_z = coord["x"], coord["y"], coord["z"] # TODO: need to fix well_z?
+                well_data = lw["wells"][well]
+                well_x, well_y, well_z = well_data["x"], well_data["y"], well_data["z"] # TODO: need to fix well_z?
             computed_joint_states = [(cell_coords[0] + offset_x + well_x) / 150 - 0.08,
                                      (cell_coords[1] + offset_y + well_y) / 150 - 0.08,
                                      ((offset_z + well_z)/ 150 - 0.08) * -1]
@@ -768,7 +774,7 @@ class WorkflowExecutor(Node):
     def _execute_set_position_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm motion_enable."""
         pose = action.get("pose", [])
-        speed = action.get("speed", 100)
+        speed = action.get("speed", 10)
         acc = action.get("acc", 500)
         mvtime = action.get("mvtime", 0)
         LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
@@ -782,7 +788,7 @@ class WorkflowExecutor(Node):
     def _execute_set_servo_angle_digital_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_servo_angle (digital)."""
         angles = action.get("angles", [])
-        speed = action.get("speed", 100)
+        speed = action.get("speed", 10)
         acc = action.get("acc", 500)
         mvtime = action.get("mvtime", 0)
         relative = action.get("relative", True)
@@ -791,6 +797,7 @@ class WorkflowExecutor(Node):
             angles.append(1.0 if relative else 0.0)
             msg = JointState(name=self.XARM_JOINTS, position=angles)
             self.publisher_digital_xarm.publish(msg)
+            LOGGER.info(f"Published to digital xArm")
         except Exception as e:
             LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
@@ -799,12 +806,13 @@ class WorkflowExecutor(Node):
     def _execute_set_servo_angle_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_servo_angle."""
         angles = action.get("angles", [])
-        speed = action.get("speed", 100)
+        speed = action.get("speed", 10)
         acc = action.get("acc", 500)
         mvtime = action.get("mvtime", 0)
         relative = action.get("relative", True)
         LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
+            angles.append(1.0 if relative else 0.0)
             self.publisher_xarm.publish(String(data=f"set_servo_angle {angles[0]} {angles[1]} {angles[2]} {angles[3]} {angles[4]} {angles[5]} {angles[6]} {speed} {acc} {mvtime} {relative}"))
         except Exception as e:
             LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")

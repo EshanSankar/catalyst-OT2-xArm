@@ -10,10 +10,10 @@
       },
       "tip_rack": {
         "type": "opentrons_96_tiprack_1000ul",
-        "slot": 1
+        "slot": 3
       },
       "reactor": {
-        "type": "sdl1_24_wellplate_2664ul",
+        "type": "sargent_15_reservoir_5750ul",
         "slot": 9
       }
     },
@@ -59,7 +59,7 @@
           {
             "action": "set_servo_angle",
             "angles": [-3.248, -0.356, -0.4479, -0.0728, 0.73, -6.248],
-            "speed": 100,
+            "speed": 10,
             "acc": 500,
             "mvtime": 0,
             "relative": false
@@ -96,7 +96,7 @@
           {
             "action": "set_servo_angle",
             "angles": [-3.3418, 0.3917, -0.7875, -1.7118, 1.49, -5.1737],
-            "speed": 100,
+            "speed": 10,
             "acc": 500,
             "mvtime": 0,
             "relative": false
@@ -109,7 +109,7 @@
           {
             "action": "set_servo_angle",
             "angles": [-3.331, 0.2526, -0.7642, -1.6922, 1.49, -5.22],
-            "speed": 100,
+            "speed": 10,
             "acc": 500,
             "mvtime": 0,
             "relative": false
@@ -117,7 +117,7 @@
           {
             "action": "set_servo_angle",
             "angles": [-3.0112, 0.7404, -1.1663, -1.4415, 1.6218, -5.137156],
-            "speed": 100,
+            "speed": 10,
             "acc": 500,
             "mvtime": 0,
             "relative": false
@@ -130,7 +130,7 @@
           {
             "action": "set_servo_angle",
             "angles": [-2.89533, 0.7404, -1.1663, -1.4415, 1.6218, -5.137156],
-            "speed": 100,
+            "speed": 10,
             "acc": 500,
             "mvtime": 0,
             "relative": false
@@ -196,7 +196,7 @@
           {
             "action": "set_servo_angle",
             "angles": [-3.4113, 0.50624, -0.7824, -1.94, 1.455, -3.3892],
-            "speed": 100,
+            "speed": 10,
             "acc": 500,
             "mvtime": 0,
             "relative": false
@@ -209,7 +209,7 @@
           {
             "action": "set_servo_angle",
             "angles": [-3.3861, 0.364798, -0.908, -1.7125, 1.45495, -3.70769],
-            "speed": 100,
+            "speed": 10,
             "acc": 500,
             "mvtime": 0,
             "relative": false

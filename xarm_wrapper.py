@@ -1,7 +1,7 @@
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String
-from xarm_msgs.srv import SetInt16ById, SetInt16, MoveCartesian, MoveJoint, GripperMove
+from std_msgs.msg import String, Float32
+from xarm_msgs.srv import SetInt16ById, SetInt16, MoveCartesian, MoveJoint, GripperMove, GetFloat32
 from typing import List
 
 class xArmClient(Node):
@@ -14,14 +14,18 @@ class xArmClient(Node):
         self.set_position_client = self.create_client(MoveCartesian, "/xarm/set_position")
         self.set_servo_angle_client = self.create_client(MoveJoint, "/xarm/set_servo_angle")
         self.set_gripper_position_client = self.create_client(GripperMove, "/xarm/set_gripper_position")
+        self.get_gripper_position_client = self.create_client(GetFloat32, "/xarm/get_gripper_position")
         self.get_logger().info("Waiting for xArm services...")
-        self.motion_enable_client.wait_for_service(timeout_sec=5.0)
-        self.set_mode_client.wait_for_service(timeout_sec=5.0)
-        self.set_state_client.wait_for_service(timeout_sec=5.0)
-        self.set_position_client.wait_for_service(timeout_sec=5.0)
-        self.set_servo_angle_client.wait_for_service(timeout_sec=5.0)
-        self.set_gripper_position_client.wait_for_service(timeout_sec=5.0)
+        self.motion_enable_client.wait_for_service(timeout_sec=1.0)
+        self.set_mode_client.wait_for_service(timeout_sec=1.0)
+        self.set_state_client.wait_for_service(timeout_sec=1.0)
+        self.set_position_client.wait_for_service(timeout_sec=1.0)
+        self.set_servo_angle_client.wait_for_service(timeout_sec=1.0)
+        self.set_gripper_position_client.wait_for_service(timeout_sec=1.0)
+        self.get_gripper_position_client.wait_for_service(timeout_sec=1.0)
         self.get_logger().info("xArm services available")
+        self.gripper_position_publisher = self.create_publisher(Float32, "/orchestrator/gripper_position", 10)
+        self._call_service(self.get_gripper_position_client, GetFloat32.Request(), "get_gripper_position")
     def action_callback(self, msg: String):
         action = msg.data
         if action == "motion_enable":
@@ -37,6 +41,11 @@ class xArmClient(Node):
             raw = action.split(" ")
             raw[11] = True if raw[11] == "True" else False
             self.set_servo_angle([float(x) for x in raw[1:8]], float(raw[8]), float(raw[9]), float(raw[10]), raw[11])
+        elif action.startswith("set_gripper_position"):
+            raw = action.split(" ")
+            self.set_gripper_position(float(raw[1]))
+        elif action.startswith("get_gripper_position"):
+            self.get_gripper_position()
     def motion_enable(self, on: bool = True):
         req = SetInt16ById.Request()
         req.id = 8
@@ -64,16 +73,21 @@ class xArmClient(Node):
         req.acc = acc
         req.mvtime = mvtime
         req.relative = relative
-        return self._call_service(self.set_servo_angle_client, req, "set_position")
+        return self._call_service(self.set_servo_angle_client, req, "set_servo_angle")
     def set_gripper_position(self, pos: float):
         req = GripperMove.Request()
         req.pos = pos
         return self._call_service(self.set_gripper_position_client, req, "set_gripper_position")
+    def get_gripper_position(self):
+        req = GetFloat32.Request()
+        return self._call_service(self.get_gripper_position_client, req, "get_gripper_position")
     def _call_service(self, client, request, service):
         self.get_logger().info(f"Calling /xarm/{service}...")
         future = client.call_async(request)
         rclpy.spin_until_future_complete(self, future)
         if future.result() is not None:
+            if service == "get_gripper_position":
+                self.gripper_position_publisher.publish(Float32(data=future.result().data))
             self.get_logger().info(f"Successfully called /xarm/{service}")
         else:
             self.get_logger().error(f"Failed to call /xarm/{service}: {future.exception()}")
