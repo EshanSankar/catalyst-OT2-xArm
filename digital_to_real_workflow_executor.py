@@ -170,7 +170,7 @@ class WorkflowExecutor(Node):
             4: (0.0, 0.09), 5: (0.13, 0.09), 6: (0.26, 0.09),
             7: (0.0, 0.18), 8: (0.13, 0.18), 9: (0.26, 0.18),
             10: (0.0, 0.27), 11: (0.13, 0.27), 12: (0.26, 0.27)}
-        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder", "PrismaticJointRightPipette"]
+        self.OT2_JOINTS = ["PrismaticJointMiddleBar", "PrismaticJointPipetteHolder"]
 
         # Initialize operation dispatchers
         self.operation_dispatcher_digital_ot2 = {
@@ -371,7 +371,6 @@ class WorkflowExecutor(Node):
 
     def state_cb(self, msg) -> None:
         self.state = int(msg.data)
-        print(self.state)
 
     def execute_workflow(self) -> bool:
         """
@@ -413,9 +412,10 @@ class WorkflowExecutor(Node):
 
             # Home the robot
             self.ot2_client.homeRobot()
-            self.publisher_xarm.publish(String(data="set_servo_angle 2.865 -0.0861 -0.4979 4.3559 1.318 1.021 0 100 500 0 False"))
-            time.sleep(10)
-
+            self.publisher_xarm.publish(String(data="set_servo_angle 3.285 0.244 -0.6925 4.835 1.604 1.0739 10 500 0 False"))
+            time.sleep(5)
+            self.publisher_xarm.publish(String(data="set_gripper_position 300"))
+            time.sleep(5)
             # Get the nodes and edges from the workflow
             nodes = self.workflow.get("nodes", [])
             edges = self.workflow.get("edges", [])
@@ -469,11 +469,12 @@ class WorkflowExecutor(Node):
             if node_id == "0":
                 self._execute_action_ot2(action)
                 continue
+            LOGGER.info("Executing digital OT2 action...")
             self._execute_action_digital_ot2(action)
-            time.sleep(0.1)
             self.state = 0
             while self.state != 1:
-                rclpy.spin_once(self, timeout_sec=0.1)
+                print(self.state)
+                rclpy.spin_once(self, timeout_sec=0.01)
                 if self.state == 1:
                     self.state_resolution = 1
                     break
@@ -485,9 +486,9 @@ class WorkflowExecutor(Node):
             if self.state_resolution == 1:
                 LOGGER.info("Continuing next OT2 action...")
                 self.state_resolution = 0
+                LOGGER.info("Executing real OT2 action...")
+                self._execute_action_ot2(action)
                 continue
-            LOGGER.info("Continuing current OT2 action...")
-            self._execute_action_ot2(action)            
         
         # Execute xArm actions
         xarm_actions = node.get("params", {}).get("xarm_actions", [])
@@ -495,9 +496,11 @@ class WorkflowExecutor(Node):
             if node_id == "0":
                 self._execute_action_xarm(action)
                 continue
+            LOGGER.info("Executing digital xArm action...")
             self._execute_action_digital_xarm(action)
             self.state = 0
             while self.state != 1:
+                print(self.state)
                 rclpy.spin_once(self, timeout_sec=0.01)
                 if self.state == 1:
                     self.state_resolution = 1
@@ -510,10 +513,10 @@ class WorkflowExecutor(Node):
             if self.state_resolution == 1:
                 LOGGER.info("Continuing next xArm action...")
                 self.state_resolution = 0
+                LOGGER.info("Executing real xArm action...")
+                self._execute_action_xarm(action)
+                time.sleep(10)
                 continue
-            LOGGER.info("Continuing current xArm action...")
-            self._execute_action_xarm(action)
-            time.sleep(5)            
 
         # Execute Arduino control
         arduino_control = node.get("params", {}).get("arduino_control", {})
@@ -666,11 +669,10 @@ class WorkflowExecutor(Node):
                 lw = json.load(f)
                 well_data = lw["wells"][well]
                 well_x, well_y, well_z = well_data["x"], well_data["y"], well_data["z"] # TODO: need to fix well_z?
-            computed_joint_states = [(cell_coords[0] + offset_x + well_x) / 150 - 0.08,
-                                     (cell_coords[1] + offset_y + well_y) / 150 - 0.08,
-                                     ((offset_z + well_z)/ 150 - 0.08) * -1]
+            computed_joint_states = [(cell_coords[1] + offset_y + well_y/1000)*0.737 - 0.08,
+                                     (cell_coords[0] + offset_x + well_x/1000)*0.881 - 0.19]
             msg = JointState(name=self.OT2_JOINTS,
-                             position=[computed_joint_states[0], computed_joint_states[1], computed_joint_states[2]])
+                             position=[computed_joint_states[0], computed_joint_states[1]])
             self.publisher_target_asset_ot2.publish(String(data=labware))
             self.publisher_digital_ot2.publish(msg)
         except Exception as e:
@@ -812,8 +814,7 @@ class WorkflowExecutor(Node):
         relative = action.get("relative", True)
         LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
-            angles.append(1.0 if relative else 0.0)
-            self.publisher_xarm.publish(String(data=f"set_servo_angle {angles[0]} {angles[1]} {angles[2]} {angles[3]} {angles[4]} {angles[5]} {angles[6]} {speed} {acc} {mvtime} {relative}"))
+            self.publisher_xarm.publish(String(data=f"set_servo_angle {angles[0]} {angles[1]} {angles[2]} {angles[3]} {angles[4]} {angles[5]} {speed} {acc} {mvtime} {relative}"))
         except Exception as e:
             LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")

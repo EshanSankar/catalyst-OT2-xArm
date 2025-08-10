@@ -39,8 +39,8 @@ class xArmClient(Node):
             self.set_position([float(x) for x in raw[1:7]], raw[7], raw[8], raw[9])
         elif action.startswith("set_servo_angle"):
             raw = action.split(" ")
-            raw[11] = True if raw[11] == "True" else False
-            self.set_servo_angle([float(x) for x in raw[1:8]], float(raw[8]), float(raw[9]), float(raw[10]), raw[11])
+            rel = True if raw[10] == "True" else False
+            self.set_servo_angle([float(x) for x in raw[1:7]], float(raw[7]), float(raw[8]), float(raw[9]), rel)
         elif action.startswith("set_gripper_position"):
             raw = action.split(" ")
             self.set_gripper_position(float(raw[1]))
@@ -59,14 +59,14 @@ class xArmClient(Node):
         req = SetInt16.Request()
         req.data = state
         return self._call_service(self.set_state_client, req, "set_state")
-    def set_position(self, pose: List[float], speed: int=100, acc: int=500, mvtime: int=0):
+    def set_position(self, pose: List[float], speed: int=10, acc: int=500, mvtime: int=0):
         req = MoveCartesian.Request()
         req.pose = pose
         req.speed = speed
         req.acc = acc
         req.mvtime = mvtime
         return self._call_service(self.set_position_client, req, "set_position")
-    def set_servo_angle(self, angles: List[float], speed: float=100, acc: float=500, mvtime: float=0, relative: bool=True):
+    def set_servo_angle(self, angles: List[float], speed: float=10, acc: float=500, mvtime: float=0, relative: bool=False):
         req = MoveJoint.Request()
         req.angles = angles
         req.speed = speed
@@ -84,13 +84,16 @@ class xArmClient(Node):
     def _call_service(self, client, request, service):
         self.get_logger().info(f"Calling /xarm/{service}...")
         future = client.call_async(request)
-        rclpy.spin_until_future_complete(self, future)
-        if future.result() is not None:
-            if service == "get_gripper_position":
-                self.gripper_position_publisher.publish(Float32(data=future.result().data))
-            self.get_logger().info(f"Successfully called /xarm/{service}")
+        if service != "set_servo_angle" and service != "set_gripper_position":
+            rclpy.spin_until_future_complete(self, future)
+            if future.result() is not None:
+                if service == "get_gripper_position":
+                    self.gripper_position_publisher.publish(Float32(data=future.result().data))
+                self.get_logger().info(f"Successfully called /xarm/{service}")
+            else:
+                self.get_logger().error(f"Failed to call /xarm/{service}: {future.exception()}")
         else:
-            self.get_logger().error(f"Failed to call /xarm/{service}: {future.exception()}")
+            self.get_logger().info(f"Successfully called /xarm/{service}")
 
 def main():
     rclpy.init()

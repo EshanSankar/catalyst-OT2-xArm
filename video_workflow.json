@@ -57,14 +57,6 @@
         },
         "xarm_actions": [
           {
-            "action": "set_servo_angle",
-            "angles": [-3.248, -0.356, -0.4479, -0.0728, 0.73, -6.248],
-            "speed": 10,
-            "acc": 500,
-            "mvtime": 0,
-            "relative": false
-          },
-          {
             "action": "set_gripper_position",
             "pos": 500,
             "labware": ""
@@ -95,7 +87,7 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [-3.3418, 0.3917, -0.7875, -1.7118, 1.49, -5.1737],
+            "angles": [3.0594, 0.31608, -0.7012, 4.6729, 1.5016, 1.0739],
             "speed": 10,
             "acc": 500,
             "mvtime": 0,
@@ -108,7 +100,7 @@
           },
           {
             "action": "set_servo_angle",
-            "angles": [-3.331, 0.2526, -0.7642, -1.6922, 1.49, -5.22],
+            "angles": [3.0594, 0.2094, -0.7014, 4.6731, 1.5016, 1.0739],
             "speed": 10,
             "acc": 500,
             "mvtime": 0,
@@ -116,7 +108,15 @@
           },
           {
             "action": "set_servo_angle",
-            "angles": [-3.0112, 0.7404, -1.1663, -1.4415, 1.6218, -5.137156],
+            "angles": [3.3619, 0.379, -0.927, 4.83, 1.5295, 1.0739],
+            "speed": 10,
+            "acc": 500,
+            "mvtime": 0,
+            "relative": false
+          },
+          {
+            "action": "set_servo_angle",
+            "angles": [3.386, 0.559, -0.9269, 4.83, 1.529, 1.217],
             "speed": 10,
             "acc": 500,
             "mvtime": 0,
@@ -129,7 +129,7 @@
           },
           {
             "action": "set_servo_angle",
-            "angles": [-2.89533, 0.7404, -1.1663, -1.4415, 1.6218, -5.137156],
+            "angles": [3.6528, 0.559, -0.9179, 4.83, 1.529, 1.217],
             "speed": 10,
             "acc": 500,
             "mvtime": 0,
@@ -195,7 +195,15 @@
         "xarm_actions": [
           {
             "action": "set_servo_angle",
-            "angles": [-3.4113, 0.50624, -0.7824, -1.94, 1.455, -3.3892],
+            "angles": [3.4706, 0.2272, -0.627, 4.94, 1.579, -0.3323],
+            "speed": 10,
+            "acc": 500,
+            "mvtime": 0,
+            "relative": false
+          },
+          {
+            "action": "set_servo_angle",
+            "angles": [3.028, 0.457, -0.78, 4.608, 1.447, -0.332],
             "speed": 10,
             "acc": 500,
             "mvtime": 0,
@@ -203,12 +211,12 @@
           },
           {
             "action": "set_gripper_position",
-            "pos": 120,
+            "pos": 200,
             "labware": "vial_1"
           },
           {
             "action": "set_servo_angle",
-            "angles": [-3.3861, 0.364798, -0.908, -1.7125, 1.45495, -3.70769],
+            "angles": [3.033, 0.189, -0.675, 4.585, 1.447, -0.332],
             "speed": 10,
             "acc": 500,
             "mvtime": 0,
