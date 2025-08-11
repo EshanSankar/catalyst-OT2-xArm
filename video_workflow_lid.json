@@ -94,22 +94,9 @@
             "relative": false
           },
           {
-            "action": "set_gripper_position",
-            "pos": 120,
-            "labware": "vial_rack_lid"
-          },
-          {
-            "action": "set_servo_angle",
-            "angles": [3.0594, 0.2094, -0.7014, 4.6731, 1.5016, 1.0739],
-            "speed": 0.1,
-            "acc": 20,
-            "mvtime": 0,
-            "relative": false
-          },
-          {
             "action": "set_servo_angle",
             "angles": [3.3619, 0.379, -0.927, 4.83, 1.5295, 1.0739],
-            "speed": 0.1,
+            "speed": 0.5,
             "acc": 20,
             "mvtime": 0,
             "relative": false
@@ -117,20 +104,15 @@
           {
             "action": "set_servo_angle",
             "angles": [3.386, 0.559, -0.9269, 4.83, 1.529, 1.217],
-            "speed": 0.1,
+            "speed": 0.5,
             "acc": 20,
             "mvtime": 0,
             "relative": false
           },
           {
-            "action": "set_gripper_position",
-            "pos": 600,
-            "labware": "vial_rack_lid"
-          },
-          {
             "action": "set_servo_angle",
             "angles": [3.6528, 0.559, -0.9179, 4.83, 1.529, 1.217],
-            "speed": 0.2,
+            "speed": 0.5,
             "acc": 20,
             "mvtime": 0,
             "relative": false

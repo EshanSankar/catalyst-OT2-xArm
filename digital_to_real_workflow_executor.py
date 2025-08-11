@@ -18,7 +18,7 @@ from typing import Dict, Any, List, Optional
 
 import rclpy
 from rclpy.node import Node
-from std_msgs.msg import String, Int8
+from std_msgs.msg import String, Int8, Float32
 from sensor_msgs.msg import JointState
 
 # Import OT2 and Arduino control classes
@@ -145,6 +145,7 @@ class WorkflowExecutor(Node):
         self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
         self.publisher_digital_xarm = self.create_publisher(JointState, "/sim_xarm/target_joint_states", 10)
         self.publisher_xarm = self.create_publisher(String, "/orchestrator/xarm/action", 10)
+        self.publisher_digital_xarm_gripper = self.create_publisher(Float32, "/sim_xarm/gripper_value", 10)
         self.publisher_target_asset_ot2 = self.create_publisher(String, "/sim_ot2/target_asset", 10)
         self.publisher_target_asset_xarm = self.create_publisher(String, "/sim_xarm/target_asset", 10)
         self.workflow_file = workflow_file
@@ -160,8 +161,6 @@ class WorkflowExecutor(Node):
         self.LABWARE_TYPES = {}
 
         self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
-        self.XARM_GRIPPER = ["left_finger", "right_finger"]
-        self.prev_gripper_position = 500
         self.state, self.state_resolution = 1, 0
         # 1 = continue with next action; 0 = continue with current action, -1 = don't continue
         self.state_sub = self.create_subscription(Int8, "safety_checker/status_int", self.state_cb, 10)
@@ -515,7 +514,7 @@ class WorkflowExecutor(Node):
                 self.state_resolution = 0
                 LOGGER.info("Executing real xArm action...")
                 self._execute_action_xarm(action)
-                time.sleep(10)
+                time.sleep(6)
                 continue
 
         # Execute Arduino control
@@ -658,6 +657,7 @@ class WorkflowExecutor(Node):
             LOGGER.info(f"Available labware: {list(self.labware_ids.keys())}")
             LOGGER.warning(f"Skipping move_to action for {labware} {well}")
             return
+        self.publisher_target_asset_ot2.publish(String(data=labware))
 
         try:
             slot = self.LABWARE_SLOTS.get(labware)
@@ -673,7 +673,6 @@ class WorkflowExecutor(Node):
                                      (cell_coords[0] + offset_x + well_x/1000)*0.881 - 0.19]
             msg = JointState(name=self.OT2_JOINTS,
                              position=[computed_joint_states[0], computed_joint_states[1]])
-            self.publisher_target_asset_ot2.publish(String(data=labware))
             self.publisher_digital_ot2.publish(msg)
         except Exception as e:
             LOGGER.error(f"Failed to move to well: {str(e)}")
@@ -776,8 +775,8 @@ class WorkflowExecutor(Node):
     def _execute_set_position_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm motion_enable."""
         pose = action.get("pose", [])
-        speed = action.get("speed", 10)
-        acc = action.get("acc", 500)
+        speed = action.get("speed", 0.2)
+        acc = action.get("acc", 20)
         mvtime = action.get("mvtime", 0)
         LOGGER.info(f"Moving xArm to position: {pose} with speed {speed}, acc {acc}, mvtime {mvtime}")
         try:
@@ -790,8 +789,8 @@ class WorkflowExecutor(Node):
     def _execute_set_servo_angle_digital_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_servo_angle (digital)."""
         angles = action.get("angles", [])
-        speed = action.get("speed", 10)
-        acc = action.get("acc", 500)
+        speed = action.get("speed", 0.2)
+        acc = action.get("acc", 20)
         mvtime = action.get("mvtime", 0)
         relative = action.get("relative", True)
         LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
@@ -808,8 +807,8 @@ class WorkflowExecutor(Node):
     def _execute_set_servo_angle_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_servo_angle."""
         angles = action.get("angles", [])
-        speed = action.get("speed", 10)
-        acc = action.get("acc", 500)
+        speed = action.get("speed", 0.2)
+        acc = action.get("acc", 20)
         mvtime = action.get("mvtime", 0)
         relative = action.get("relative", True)
         LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
@@ -825,14 +824,9 @@ class WorkflowExecutor(Node):
         pos = action.get("pos", 500)/1000 # Isaac Sim joint_dof limit
         labware = action.get("labware", "")
         try:
-            msg = JointState(name=self.XARM_GRIPPER, position=[pos, pos])
-            if pos > self.prev_gripper_position: # if the gripper is opening
-                LOGGER.info(f"Setting xArm gripper position: {pos} to release labware {labware}")
-                self.publisher_target_asset_xarm.publish(String(data=""))
-            else: # if the gripper is closing
-                LOGGER.info(f"Setting xArm gripper position: {pos} to grip labware {labware}")
-                self.publisher_target_asset_xarm.publish(String(data=f"{labware}"))
-            self.publisher_digital_xarm.publish(msg)
+            LOGGER.info(f"Setting xArm gripper position: {pos} on labware {labware}")
+            self.publisher_target_asset_xarm.publish(String(data=f"{labware}"))
+            self.publisher_digital_xarm_gripper.publish(Float32(data=pos))
         except Exception as e:
             LOGGER.error(f"Failed to set xArm gripper position: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")

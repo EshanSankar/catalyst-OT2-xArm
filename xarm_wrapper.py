@@ -24,7 +24,7 @@ class xArmClient(Node):
         self.set_gripper_position_client.wait_for_service(timeout_sec=1.0)
         self.get_gripper_position_client.wait_for_service(timeout_sec=1.0)
         self.get_logger().info("xArm services available")
-        self.gripper_position_publisher = self.create_publisher(Float32, "/orchestrator/gripper_position", 10)
+        self.gripper_position_publisher = self.create_publisher(Float32, "/orchestrator/gripper_value", 10)
         self._call_service(self.get_gripper_position_client, GetFloat32.Request(), "get_gripper_position")
     def action_callback(self, msg: String):
         action = msg.data
@@ -59,14 +59,14 @@ class xArmClient(Node):
         req = SetInt16.Request()
         req.data = state
         return self._call_service(self.set_state_client, req, "set_state")
-    def set_position(self, pose: List[float], speed: int=10, acc: int=500, mvtime: int=0):
+    def set_position(self, pose: List[float], speed: int=0.2, acc: int=500, mvtime: int=0):
         req = MoveCartesian.Request()
         req.pose = pose
         req.speed = speed
         req.acc = acc
         req.mvtime = mvtime
         return self._call_service(self.set_position_client, req, "set_position")
-    def set_servo_angle(self, angles: List[float], speed: float=10, acc: float=500, mvtime: float=0, relative: bool=False):
+    def set_servo_angle(self, angles: List[float], speed: float=0.2, acc: float=20, mvtime: float=0, relative: bool=False):
         req = MoveJoint.Request()
         req.angles = angles
         req.speed = speed
