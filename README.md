@@ -93,7 +93,7 @@ ros2 service call /xarm/set_gripper_speed xarm_msgs/srv/SetFloat32 "{data: 1500}
 source venv/bin/activate
 python3 xarm_wrapper.py
 ```
-2. Open another terminal and run:
+Now we can finally run the workflow orchestrator. Open another terminal and run:
 ```bash
 cd ~/ros2_projects/digital_twin # or whatever your workspace is named
 source install/setup.bash
