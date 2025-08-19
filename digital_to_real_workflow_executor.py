@@ -16,6 +16,7 @@ import time
 from datetime import datetime
 from typing import Dict, Any, List, Optional
 
+import numpy as np
 import rclpy
 from rclpy.node import Node
 from std_msgs.msg import String, Int8, Float32
@@ -159,11 +160,13 @@ class WorkflowExecutor(Node):
         
         self.LABWARE_SLOTS = {}
         self.LABWARE_TYPES = {}
-
+        self.XARM_JOINT_THRESHOLD = 0.02
+        self.xarm_target_joints = [3.285, 0.244, -0.6925, 4.835, 1.604, 1.0739]
         self.XARM_JOINTS = ["joint1", "joint2", "joint3", "joint4", "joint5", "joint6"]
-        self.state, self.state_resolution = 1, 0
+        self.state, self.state_resolution, self.xarm_state = 1, 0, 1
         # 1 = continue with next action; 0 = continue with current action, -1 = don't continue
         self.state_sub = self.create_subscription(Int8, "safety_checker/status_int", self.state_cb, 10)
+        self.xarm_joint_sub = self.create_subscription(JointState, "/xarm/joint_states", self.xarm_joint_cb, 10)
         self.OT2_COORDS = {
             1: (0.0, 0.0), 2: (0.13, 0.0), 3: (0.26, 0.0),
             4: (0.0, 0.09), 5: (0.13, 0.09), 6: (0.26, 0.09),
@@ -258,7 +261,7 @@ class WorkflowExecutor(Node):
             LOGGER.warning(f"Failed to connect to Arduino: {str(e)}")
             LOGGER.warning("Some functionality may be limited")
             # Don't set success to False here, as we can still proceed without Arduino
-        time.sleep(3)
+        #time.sleep(3)
         return success
 
     def setup_labware(self) -> bool:
@@ -371,6 +374,15 @@ class WorkflowExecutor(Node):
     def state_cb(self, msg) -> None:
         self.state = int(msg.data)
 
+    def xarm_joint_cb(self, msg) -> None:
+        xarm_joints = np.array(msg.position)[:6]
+        print(xarm_joints)
+        print(self.xarm_target_joints)
+        if np.linalg.norm(np.subtract(xarm_joints, self.xarm_target_joints)) < self.XARM_JOINT_THRESHOLD:
+            self.xarm_state = 1
+        else:
+            self.xarm_state = 0
+
     def execute_workflow(self) -> bool:
         """
         Execute the workflow.
@@ -480,8 +492,10 @@ class WorkflowExecutor(Node):
                 elif self.state == -1:
                     LOGGER.error("Digital OT2 UNSAFE!")
                     self.publisher_xarm.publish(String(data="get_gripper_position"))
+                    return
                 else:
                     LOGGER.info("Digital OT2 moving...")
+            time.sleep(1)
             if self.state_resolution == 1:
                 LOGGER.info("Continuing next OT2 action...")
                 self.state_resolution = 0
@@ -507,14 +521,25 @@ class WorkflowExecutor(Node):
                 elif self.state == -1:
                     LOGGER.error("Digital xArm UNSAFE!")
                     self.publisher_xarm.publish(String(data="get_gripper_position"))
+                    return
                 else:
                     LOGGER.info("Digital xArm moving...")
+            time.sleep(1)
             if self.state_resolution == 1:
                 LOGGER.info("Continuing next xArm action...")
                 self.state_resolution = 0
                 LOGGER.info("Executing real xArm action...")
                 self._execute_action_xarm(action)
-                time.sleep(6)
+                self.xarm_state = 0
+                # check if real xarm is done
+                while self.xarm_state != 1:
+                    rclpy.spin_once(self, timeout_sec=0.01)
+                    if self.xarm_state == 1:
+                        LOGGER.info("Real xArm finished moving")
+                        break
+                    else:
+                        LOGGER.info("Real xArm moving...")
+                time.sleep(1) # between xarm reaching joint threshold and next action
                 continue
 
         # Execute Arduino control
@@ -669,8 +694,8 @@ class WorkflowExecutor(Node):
                 lw = json.load(f)
                 well_data = lw["wells"][well]
                 well_x, well_y, well_z = well_data["x"], well_data["y"], well_data["z"] # TODO: need to fix well_z?
-            computed_joint_states = [(cell_coords[1] + offset_y + well_y/1000)*0.737 - 0.08,
-                                     (cell_coords[0] + offset_x + well_x/1000)*0.881 - 0.19]
+            computed_joint_states = [(cell_coords[1] + offset_y + well_y/1000)*0.58333 - 0.08,
+                                     (cell_coords[0] + offset_x + well_x/1000)*0.71845 - 0.19]
             msg = JointState(name=self.OT2_JOINTS,
                              position=[computed_joint_states[0], computed_joint_states[1]])
             self.publisher_digital_ot2.publish(msg)
@@ -813,6 +838,7 @@ class WorkflowExecutor(Node):
         relative = action.get("relative", True)
         LOGGER.info(f"Setting xArm servo angles: {angles} with speed {speed}, acc {acc}, mvtime {mvtime}, relative {relative}")
         try:
+            self.xarm_target_joints = np.array([angles[0], angles[1], angles[2], angles[3], angles[4], angles[5]])
             self.publisher_xarm.publish(String(data=f"set_servo_angle {angles[0]} {angles[1]} {angles[2]} {angles[3]} {angles[4]} {angles[5]} {speed} {acc} {mvtime} {relative}"))
         except Exception as e:
             LOGGER.error(f"Failed to set xArm servo angles: {str(e)}")
@@ -821,7 +847,8 @@ class WorkflowExecutor(Node):
         
     def _execute_set_gripper_position_digital_xarm(self, action: Dict[str, Any]) -> None:
         """Execute xArm set_gripper_position (digital)."""
-        pos = action.get("pos", 500)/1000 # Isaac Sim joint_dof limit
+        pos = action.get("pos", 500)
+        pos = (850 - pos)/1000 # scaling for Isaac Sim
         labware = action.get("labware", "")
         try:
             LOGGER.info(f"Setting xArm gripper position: {pos} on labware {labware}")
@@ -838,6 +865,7 @@ class WorkflowExecutor(Node):
         LOGGER.info(f"Setting xArm gripper position: {pos}")
         try:
             self.publisher_xarm.publish(String(data=f"set_gripper_position {pos}"))
+            time.sleep(2)
         except Exception as e:
             LOGGER.error(f"Failed to set xArm gripper position: {str(e)}")
             LOGGER.warning(f"Continuing with workflow execution...")
