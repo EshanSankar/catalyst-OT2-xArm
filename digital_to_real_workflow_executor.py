@@ -146,6 +146,7 @@ class WorkflowExecutor(Node):
         self.publisher_digital_ot2 = self.create_publisher(JointState, "/sim_ot2/target_joint_states", 10)
         self.publisher_digital_xarm = self.create_publisher(JointState, "/sim_xarm/target_joint_states", 10)
         self.publisher_xarm = self.create_publisher(String, "/orchestrator/xarm/action", 10)
+        self.publisher_resolution = self.create_publisher(String, "/orchestrator/resolution", 10)
         self.publisher_digital_xarm_gripper = self.create_publisher(Float32, "/sim_xarm/gripper_value", 10)
         self.publisher_target_asset_ot2 = self.create_publisher(String, "/sim_ot2/target_asset", 10)
         self.publisher_target_asset_xarm = self.create_publisher(String, "/sim_xarm/target_asset", 10)
@@ -481,28 +482,36 @@ class WorkflowExecutor(Node):
                 self._execute_action_ot2(action)
                 continue
             LOGGER.info("Executing digital OT2 action...")
-            self._execute_action_digital_ot2(action)
             self.state = 0
-            while self.state != 1:
+            self._execute_action_digital_ot2(action)
+            time.sleep(0.5)
+            # Wait for safety check completion
+            safety_confirmed = False
+            while not safety_confirmed:
                 print(self.state)
-                rclpy.spin_once(self, timeout_sec=0.01)
                 if self.state == 1:
-                    self.state_resolution = 1
+                    safety_confirmed = True
+                    LOGGER.info("Digital OT2 motion confirmed safe")
                     break
                 elif self.state == -1:
                     LOGGER.error("Digital OT2 UNSAFE!")
-                    self.publisher_xarm.publish(String(data="get_gripper_position"))
-                    return
+                    resolution = input("Enter 1 to continue with real action: ")
+                    if resolution == "1":
+                        self.state = 1
+                        self.publisher_resolution.publish(Int8(data=1))
+                    else:
+                        LOGGER.info("Aborting workflow due to unsafe state")
+                        return
                 else:
                     LOGGER.info("Digital OT2 moving...")
-            time.sleep(1)
-            if self.state_resolution == 1:
-                LOGGER.info("Continuing next OT2 action...")
-                self.state_resolution = 0
+                    rclpy.spin_once(self, timeout_sec=0.005)
+                
+            # Only proceed with real action if simulation was successful
+            if safety_confirmed:
+                time.sleep(1)
                 LOGGER.info("Executing real OT2 action...")
                 self._execute_action_ot2(action)
-                continue
-        
+
         # Execute xArm actions
         xarm_actions = node.get("params", {}).get("xarm_actions", [])
         for action in xarm_actions:
@@ -510,37 +519,35 @@ class WorkflowExecutor(Node):
                 self._execute_action_xarm(action)
                 continue
             LOGGER.info("Executing digital xArm action...")
-            self._execute_action_digital_xarm(action)
             self.state = 0
-            while self.state != 1:
+            self._execute_action_digital_xarm(action)
+            time.sleep(0.5)
+            # Wait for safety check completion
+            safety_confirmed = False
+            while not safety_confirmed:
                 print(self.state)
-                rclpy.spin_once(self, timeout_sec=0.01)
                 if self.state == 1:
-                    self.state_resolution = 1
+                    safety_confirmed = True
+                    LOGGER.info("Digital xArm confirmed safe")
                     break
                 elif self.state == -1:
                     LOGGER.error("Digital xArm UNSAFE!")
-                    self.publisher_xarm.publish(String(data="get_gripper_position"))
-                    return
+                    resolution = input("Enter 1 to continue with real action: ")
+                    if resolution == "1":
+                        self.state = 1
+                        self.publisher_resolution.publish(Int8(data=1))
+                    else:
+                        LOGGER.info("Aborting workflow due to unsafe state")
+                        return
                 else:
                     LOGGER.info("Digital xArm moving...")
-            time.sleep(1)
-            if self.state_resolution == 1:
-                LOGGER.info("Continuing next xArm action...")
-                self.state_resolution = 0
+                    rclpy.spin_once(self, timeout_sec=0.005)
+                
+            # Only proceed with real action if simulation was successful
+            if safety_confirmed:
+                time.sleep(1)
                 LOGGER.info("Executing real xArm action...")
                 self._execute_action_xarm(action)
-                self.xarm_state = 0
-                # check if real xarm is done
-                while self.xarm_state != 1:
-                    rclpy.spin_once(self, timeout_sec=0.01)
-                    if self.xarm_state == 1:
-                        LOGGER.info("Real xArm finished moving")
-                        break
-                    else:
-                        LOGGER.info("Real xArm moving...")
-                time.sleep(1) # between xarm reaching joint threshold and next action
-                continue
 
         # Execute Arduino control
         arduino_control = node.get("params", {}).get("arduino_control", {})

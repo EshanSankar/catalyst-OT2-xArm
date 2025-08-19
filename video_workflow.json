@@ -196,14 +196,14 @@
           {
             "action": "set_servo_angle",
             "angles": [3.4706, 0.2272, -0.627, 4.94, 1.579, -0.3323],
-            "speed": 0.5,
+            "speed": 0.4,
             "acc": 20,
             "mvtime": 0,
             "relative": false
           },
           {
             "action": "set_servo_angle",
-            "angles": [3.028, 0.457, -0.78, 4.608, 1.447, -0.332],
+            "angles": [2.9817, 0.44, -0.73816, 4.5855, 1.447, -0.332],
             "speed": 0.5,
             "acc": 20,
             "mvtime": 0,
@@ -211,12 +211,12 @@
           },
           {
             "action": "set_gripper_position",
-            "pos": 200,
+            "pos": 150,
             "labware": "vial_1"
           },
           {
             "action": "set_servo_angle",
-            "angles": [3.033, 0.189, -0.675, 4.585, 1.447, -0.332],
+            "angles": [2.9817, 0.189, -0.675, 4.585, 1.447, -0.332],
             "speed": 0.1,
             "acc": 20,
             "mvtime": 0,
